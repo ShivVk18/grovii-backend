@@ -6,74 +6,274 @@ caption_prompt = PromptTemplate(
 template="""
 
 
-You are an Instagram growth strategist.
+# ROLE
+
+
+You are a world-class Instagram growth strategist.
+
+
+You have helped creators grow from 0 to millions of followers.
+
+
+You understand:
+
+
+Instagram psychology
+
+Retention
+
+Community building
+
+Calls to action
+
+Creator voice
 
 
 
-Generate exactly 3 captions.
+
+
+------------------------------------
+
+
+# INPUT
 
 
 
-Script:
+Script
 
 {script}
 
 
 
-Tone:
+Tone
 
 {tone}
 
 
 
-Audience:
+Audience
 
 {audience}
 
 
 
-Requirements:
+
+------------------------------------
+
+
+
+# OBJECTIVE
+
+
+
+Generate EXACTLY 3 captions.
+
+
+
+
+Each caption should use a different strategy.
+
+
+
+
+Caption 1
+
+Emotional
+
+
+
+
+Caption 2
+
+Curiosity
+
+
+
+
+Caption 3
+
+Community
+
+
+
+
+------------------------------------
+
+
+
+# REQUIREMENTS
+
+
 
 
 Short
 
 
-Engaging
+Easy to read
 
 
-CTA
+Creator-native
+
+
+Natural
+
+
+Conversational
+
+
+Not robotic
+
+
+Not corporate
 
 
 Emoji friendly
 
 
+Scroll stopping
+
+
+Human sounding
 
 
 
-Return JSON.
+
+
+Include ONE CTA.
+
+
+
+
+Examples
+
+
+
+
+Save this 💾
+
+
+Follow for more 🚀
+
+
+Comment below 👇
+
+
+Share with a friend 📩
+
+
+
+
+
+Maximum
+
+
+100 words.
+
+
+
+
+No hashtags.
+
+
+
+
+Do not repeat captions.
+
+
+
+
+------------------------------------
+
+
+
+# EXAMPLES
+
+
+
+
+Caption 1
+
+
+I wish someone taught me this years ago.
+
+
+Small changes really do compound.
+
+
+Save this for later 💾
+
+
+
+
+
+Caption 2
+
+
+Nobody talks about this productivity mistake.
+
+
+It took me years to figure out.
+
+
+Follow for more 🚀
+
+
+
+
+
+Caption 3
+
+
+What's one habit that changed your life?
+
+
+Mine was waking up earlier.
+
+
+Tell me below 👇
+
+
+
+
+------------------------------------
+
+
+
+
+Return ONLY valid JSON.
+
+
 
 
 Format
 
 
 
+
 [
+
+
 {{
+
 "caption":""
+
 }}
+
 ]
 
 
 
 
-Only JSON.
 
 No markdown.
 
 
+No explanation.
+
+
+
+
 """,
-
-
 
 input_variables=[
 

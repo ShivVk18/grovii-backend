@@ -2,6 +2,8 @@ from langchain_openai import ChatOpenAI
 
 from src.config.config import settings
 
+
+
 class OpenAiService:
     def __init__ (self):
         self.llm = ChatOpenAI(

@@ -44,6 +44,12 @@ class StoryboardResponse(BaseModel):
     duration: int
 
     platform: str
+    
+    thumbnail_url: Optional[str] = None
+    
+    thumbnail_status: Optional[str] = "pending"
+    
+    thumbnail_prompt: Optional[str] = None
 
     created_at: datetime
 

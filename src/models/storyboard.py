@@ -1,62 +1,143 @@
 import uuid
 
-from sqlalchemy import Column, String, Text, Integer, DateTime, ForeignKey
+from sqlalchemy import Column, String, Text, Integer, DateTime, ForeignKey,Float
 from sqlalchemy.orm import relationship
 from datetime import datetime
+
 
 from src.database import Base
 
 
 class Storyboard(Base):
 
-    __tablename__ = "storyboards"
+    __tablename__="storyboards"
 
-    id = Column(
-        String,
+    id=Column(String,
         primary_key=True,
-        default=lambda: str(uuid.uuid4())
+        default=lambda:str(uuid.uuid4())
     )
 
-    user_id = Column(
+    user_id=Column(
         String,
-        ForeignKey("users.id"),
-        nullable=False
+        ForeignKey("users.id")
     )
 
-    title = Column(String)
-    idea = Column(Text)
-    goal = Column(String)
-    tone = Column(String)
-    style = Column(String)
-    audience = Column(String)
-    duration = Column(Integer)
-    platform = Column(String)
+    title=Column(String)
 
-    status = Column(
+    idea=Column(Text)
+
+    goal=Column(String)
+
+    tone=Column(String)
+
+    style=Column(String)
+
+    audience=Column(String)
+
+    duration=Column(Integer)
+
+    platform=Column(String)
+
+
+    status=Column(
         String,
         default="draft"
     )
 
-    script = Column(Text)
 
-    created_at = Column(
+
+    hook=Column(Text)
+
+    script=Column(Text)
+
+
+
+    thumbnail_prompt=Column(Text)
+
+    thumbnail_url=Column(String)
+
+
+
+    total_tokens=Column(
+        Integer,
+        default=0
+    )
+
+
+    total_cost=Column(
+        Float,
+        default=0
+    )
+
+
+    latency=Column(
+        Float,
+        default=0
+    )
+
+
+
+    created_at=Column(
         DateTime,
         default=datetime.utcnow
     )
 
-    updated_at = Column(
+
+    updated_at=Column(
         DateTime,
         default=datetime.utcnow,
         onupdate=datetime.utcnow
     )
 
-    user = relationship(
+
+    user=relationship(
         "User",
         back_populates="storyboards"
     )
 
-    scenes = relationship(
+
+    scenes=relationship(
         "Scene",
-        back_populates="storyboard",
-        cascade="all,delete"
+        back_populates="storyboard"
     )
+
+
+    captions=relationship(
+        "Caption"
+    )
+
+
+
+    hashtags=relationship(
+        "Hashtag"
+    )
+
+
+    hooks=relationship(
+        "Hook"
+    )
+
+
+    trends=relationship(
+        "Trend"
+    )
+
+
+    music=relationship(
+        "MusicSuggestion"
+    )
+
+
+
+    repurpose=relationship(
+        "RepurposeContent",
+        uselist=False
+    )
+    
+    jobs = relationship(
+
+        "Job",
+
+        cascade="all,delete"
+
+)

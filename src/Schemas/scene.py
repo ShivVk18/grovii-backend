@@ -1,22 +1,57 @@
 from pydantic import BaseModel
+from typing import List, Optional
+
+from pydantic import BaseModel
 from typing import List
 
-class SceneSchema(BaseModel):
 
+class Scene(BaseModel):
+
+    scene_number:int
 
     title:str
 
+    duration:str
 
-    description:str
+
+    camera_angle:str
 
 
-    visual_cue:str
+    camera_movement:str
+
+
+    lighting:str
+
+
+    transition:str
+
+
+    music_mood:str
+
+
+    subject:str
+
+
+    broll:str
+
+
+    dos:List[str]
+
+
+    donts:List[str]
 
 
     script_segment:str
-    
-
-class ScenesResponse(BaseModel):
 
 
-    scenes:List[SceneSchema]
+    scene_prompt:str
+
+
+    negative_prompt:str
+
+
+
+
+class SceneList(BaseModel):
+
+    scenes:List[Scene]

@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Column, String, Text, Integer, ForeignKey, DateTime
+from sqlalchemy import Column, String, Text, Integer, ForeignKey, DateTime,JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
@@ -9,31 +9,95 @@ from src.database import Base
 
 class Scene(Base):
 
-    __tablename__ = "scenes"
+    __tablename__="scenes"
 
-    id = Column(
-        String,
+
+
+    id=Column(String,
         primary_key=True,
-        default=lambda: str(uuid.uuid4())
+        default=lambda:str(uuid.uuid4())
     )
 
-    storyboard_id = Column(
+
+
+    storyboard_id=Column(
+
         String,
-        ForeignKey("storyboards.id")
+
+        ForeignKey(
+
+            "storyboards.id"
+
+        )
+
     )
 
-    order = Column(Integer)
-    title = Column(String)
-    description = Column(Text)
-    visual_cue = Column(Text)
-    script_segment = Column(Text)
 
-    created_at = Column(
-        DateTime,
-        default=datetime.utcnow
-    )
 
-    storyboard = relationship(
+    scene_number=Column(Integer)
+
+
+
+    title=Column(String)
+
+
+
+    duration=Column(String)
+
+
+
+    camera_angle=Column(String)
+
+
+
+    camera_movement=Column(String)
+
+
+
+    lighting=Column(String)
+
+
+
+    transition=Column(String)
+
+
+
+    music_mood=Column(String)
+
+
+
+    subject=Column(String)
+
+
+
+    broll=Column(Text)
+
+
+
+    dos=Column(JSON)
+
+
+
+    donts=Column(JSON)
+
+
+
+    script_segment=Column(Text)
+
+
+
+    scene_prompt=Column(Text)
+
+
+
+    negative_prompt=Column(Text)
+
+
+
+    storyboard=relationship(
+
         "Storyboard",
+
         back_populates="scenes"
+
     )
