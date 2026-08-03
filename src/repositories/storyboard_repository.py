@@ -158,7 +158,17 @@ def save_graph_result(db: Session, storyboard_id: str, state: dict):
                 title=scene.get("title"),
                 script_segment=scene.get("script_segment"),
                 scene_prompt=scene.get("scene_prompt"),
+                negative_prompt=scene.get("negative_prompt"),
                 duration=scene.get("duration"),
+                camera_angle=scene.get("camera_angle"),
+                camera_movement=scene.get("camera_movement"),
+                lighting=scene.get("lighting"),
+                transition=scene.get("transition"),
+                music_mood=scene.get("music_mood"),
+                subject=scene.get("subject"),
+                broll=scene.get("broll"),
+                dos=scene.get("dos"),
+                donts=scene.get("donts")
             )
             for idx, scene in enumerate(state.get("scenes", []))
         ]
@@ -229,6 +239,9 @@ def save_graph_result(db: Session, storyboard_id: str, state: dict):
                     storyboard_id=storyboard.id,
                     posting_time=trend.get("posting_time"),
                     editing_style=trend.get("editing_style"),
+                    content_gap=trend.get("content_gaps") or trend.get("content_gap"),
+                    transitions=trend.get("transitions"),
+                    sounds=trend.get("sounds"),
                 )
             )
 
@@ -242,7 +255,10 @@ def save_graph_result(db: Session, storyboard_id: str, state: dict):
                 RepurposeContent(
                     storyboard_id=storyboard.id,
                     linkedin=repurpose.get("linkedin"),
-                    twitter=repurpose.get("twitter"),
+                    twitter=repurpose.get("twitter") or repurpose.get("twitter_thread"),
+                    carousel=repurpose.get("carousel"),
+                    blog=repurpose.get("blog"),
+                    newsletter=repurpose.get("newsletter"),
                 )
             )
 

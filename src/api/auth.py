@@ -85,7 +85,10 @@ def me(
     return {
         "id": str(current_user.id),
         "email": current_user.email,
-        "username": current_user.username
+        "username": current_user.username,
+        "credits": current_user.credits,
+        "plan": current_user.plan,
+        "avatar_url": current_user.avatar_url
     }
 
 

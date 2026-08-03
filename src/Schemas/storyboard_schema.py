@@ -56,3 +56,90 @@ class StoryboardResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class SceneResponse(BaseModel):
+    id: UUID
+    scene_number: int
+    title: Optional[str] = None
+    duration: Optional[str] = None
+    camera_angle: Optional[str] = None
+    camera_movement: Optional[str] = None
+    lighting: Optional[str] = None
+    transition: Optional[str] = None
+    music_mood: Optional[str] = None
+    subject: Optional[str] = None
+    broll: Optional[str] = None
+    dos: Optional[list] = None
+    donts: Optional[list] = None
+    script_segment: Optional[str] = None
+    scene_prompt: Optional[str] = None
+    negative_prompt: Optional[str] = None
+    
+    class Config:
+        from_attributes = True
+
+
+class CaptionResponse(BaseModel):
+    id: UUID
+    caption: str
+    class Config:
+        from_attributes = True
+
+
+class HashtagResponse(BaseModel):
+    id: UUID
+    hashtag: str
+    class Config:
+        from_attributes = True
+
+
+class HookResponse(BaseModel):
+    id: UUID
+    hook: str
+    selected: bool
+    class Config:
+        from_attributes = True
+
+
+class MusicResponse(BaseModel):
+    id: UUID
+    genre: Optional[str] = None
+    mood: Optional[str] = None
+    class Config:
+        from_attributes = True
+
+
+class TrendResponse(BaseModel):
+    id: UUID
+    posting_time: Optional[str] = None
+    editing_style: Optional[str] = None
+    content_gap: Optional[str] = None
+    transitions: Optional[list] = None
+    sounds: Optional[list] = None
+    class Config:
+        from_attributes = True
+
+
+class RepurposeResponse(BaseModel):
+    id: UUID
+    linkedin: Optional[str] = None
+    twitter: Optional[str] = None
+    carousel: Optional[str] = None
+    blog: Optional[str] = None
+    newsletter: Optional[str] = None
+    class Config:
+        from_attributes = True
+
+
+class StoryboardDetailResponse(StoryboardResponse):
+    hook: Optional[str] = None
+    script: Optional[str] = None
+    status: str
+    scenes: list[SceneResponse] = []
+    captions: list[CaptionResponse] = []
+    hashtags: list[HashtagResponse] = []
+    hooks: list[HookResponse] = []
+    music: list[MusicResponse] = []
+    trends: list[TrendResponse] = []
+    repurpose: Optional[RepurposeResponse] = None

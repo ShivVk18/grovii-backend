@@ -14,7 +14,9 @@ from src.repositories.storyboard_repository import (
 
     update_storyboard as repo_update_storyboard,
 
-    delete_storyboard as repo_delete_storyboard
+    delete_storyboard as repo_delete_storyboard,
+
+    get_storyboard_with_relations
 
 )
 from src.services.queue_service import storyboard_queue
@@ -229,7 +231,7 @@ def get_storyboard(
         storyboard_id: str,
         user_id: str
 ):
-    storyboard = repo_get_storyboard(
+    storyboard = get_storyboard_with_relations(
         db,
         storyboard_id,
         user_id

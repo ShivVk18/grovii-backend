@@ -1,79 +1,57 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
+
+def get_state_val(state, key, default=""):
+    if isinstance(state, dict):
+        return state.get(key, default)
+    return getattr(state, key, default)
+
+
+def update_state(state, updates):
+    if isinstance(state, dict):
+        state.update(updates)
+        return state
+    else:
+        return updates
 
 
 def collector_node(state):
+    updates = {}
+    updates["status"] = "completed"
+    updates["completed_at"] = datetime.now(timezone.utc).isoformat()
 
-
-    state["status"]="completed"
-
-
-
-    state["completed_at"]=datetime.utcnow().isoformat()
-
-
-
-    state["summary"]={
-
-        "scenes":len(
-
-            state.get(
-
+    updates["summary"] = {
+        "scenes": len(
+            get_state_val(
+                state,
                 "scenes",
-
                 []
-
             )
-
         ),
 
-
-
-
-        "captions":len(
-
-            state.get(
-
+        "captions": len(
+            get_state_val(
+                state,
                 "captions",
-
                 []
-
             )
-
         ),
 
-
-
-
-        "hashtags":len(
-
-            state.get(
-
+        "hashtags": len(
+            get_state_val(
+                state,
                 "hashtags",
-
                 []
-
             )
-
         ),
 
-
-
-        "music":len(
-
-            state.get(
-
+        "music": len(
+            get_state_val(
+                state,
                 "scene_music",
-
                 []
-
             )
-
         )
-
-
     }
 
-
-
-    return state
+    return update_state(state, updates)

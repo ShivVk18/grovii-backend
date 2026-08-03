@@ -1,114 +1,64 @@
 import logging
 
-
 from src.ai.prompts.scene_prompt import scene_prompt
-from src.Schemas.scene import SceneList
-
+from src.Schemas.scene import Scene, SceneList
 from src.services.openai_service import openai_service
-
-
-from langchain_core.output_parsers import (
-        PydanticOutputParser
-)
-
-
+from langchain_core.output_parsers import JsonOutputParser
 
 logger = logging.getLogger(__name__)
 
 
-llm = openai_service.get_llm()
+def get_state_val(state, key, default=""):
+    if isinstance(state, dict):
+        return state.get(key, default)
+    return getattr(state, key, default)
 
 
-
-parser = PydanticOutputParser(
-
-            pydantic_object=SceneList
-)
-
-
-
-chain = scene_prompt | llm | parser
-
-
-
+def update_state(state, updates):
+    if isinstance(state, dict):
+        state.update(updates)
+        return state
+    else:
+        return updates
 
 
 def scene_node(state):
-
-
-
+    logger.info("Stage: Scenes Generated - Processing Started")
+    updates = {}
     try:
-
-
+        llm = openai_service.get_llm()
+        parser = JsonOutputParser()
+        chain = scene_prompt | llm | parser
 
         scenes = chain.invoke(
-
             {
-
-
-                "idea":state['idea'],
-
-
-                "hook":state['hook'],
-
-
-                "tone":state['tone'],
-
-
-                "audience":state['audience']
-
+                "idea": get_state_val(state, "idea"),
+                "hook": get_state_val(state, "hook"),
+                "tone": get_state_val(state, "tone"),
+                "audience": get_state_val(state, "audience")
             }
-
         )
 
+        if not isinstance(scenes, list) or len(scenes) != 5:
+            raise Exception(
+                "Expected exactly 5 scenes"
+            )
 
-        if len(state['scenes']) != 5:
-
-
-         raise Exception(
-        "Expected exactly 5 scenes"
-         )
-
-        state['scenes'] = [
-
-            scene.model_dump()
-
-            for scene in scenes.scenes
-
+        updates['scenes'] = [
+            Scene(**scene).model_dump()
+            for scene in scenes
         ]
 
 
-
         logger.info(
-
-            f"Generated {len(state['scenes'])} scenes"
-
+            f"Stage: Scenes Generated - Success. Generated {len(updates['scenes'])} scenes"
         )
-
-
-
 
     except Exception as e:
-
-
-
         logger.error(
-
-
-            f"Scene generation failed : {e}"
-
+            f"Stage: Scenes Generated - Failed: {e}"
         )
+        updates['scenes'] = []
+        updates['scene_error'] = str(e)
 
-
-
-
-        state['scenes']=[]
-
-
-
-        state['scene_error']=str(e)
-
-
-
-
-    return state
+    return update_state(state, updates)

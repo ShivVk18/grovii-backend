@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone
 
 from src.models.jobs import Job, JobStatus
 
@@ -109,7 +109,7 @@ def mark_processing(
         job.status = JobStatus.PROCESSING
 
 
-        job.started_at = datetime.utcnow()
+        job.started_at = datetime.now(timezone.utc)
 
 
         db.commit()
@@ -147,7 +147,7 @@ def mark_completed(
         job.progress = 100
 
 
-        job.completed_at = datetime.utcnow()
+        job.completed_at = datetime.now(timezone.utc)
 
 
         db.commit()
@@ -187,7 +187,7 @@ def mark_failed(
         job.error_message = error_message
 
 
-        job.completed_at = datetime.utcnow()
+        job.completed_at = datetime.now(timezone.utc)
 
 
         db.commit()

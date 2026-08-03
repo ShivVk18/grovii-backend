@@ -12,9 +12,19 @@ from src.services.openai_service import openai_service
 
 logger = logging.getLogger(__name__)
 
-llm = openai_service.get_llm()
 
-chain = hook_prompt | llm
+def get_state_val(state, key, default=""):
+    if isinstance(state, dict):
+        return state.get(key, default)
+    return getattr(state, key, default)
+
+
+def update_state(state, updates):
+    if isinstance(state, dict):
+        state.update(updates)
+        return state
+    else:
+        return updates
 
 
 @retry(
@@ -26,62 +36,47 @@ chain = hook_prompt | llm
     )
 )
 def generate_hook(payload):
+    llm = openai_service.get_llm()
+    chain = hook_prompt | llm
     return chain.invoke(payload)
 
 
 def hook_node(state):
-
+    logger.info("Stage: Hook Generated - Processing Started")
+    updates = {}
     try:
-
         response = generate_hook(
-
             {
-                "idea": state["idea"],
-                "goal": state["goal"],
-                "tone": state["tone"],
-                "audience": state["audience"],
-                "platform": state["platform"]
+                "idea": get_state_val(state, "idea"),
+                "goal": get_state_val(state, "goal"),
+                "tone": get_state_val(state, "tone"),
+                "audience": get_state_val(state, "audience"),
+                "platform": get_state_val(state, "platform")
             }
-
         )
 
-
         hook = response.content.strip()
-
 
         if len(hook.split()) > 15:
             raise ValueError(
                 "Hook exceeds maximum word limit"
             )
 
-
         if len(hook) < 10:
             raise ValueError(
                 "Hook too short"
             )
 
-
-        state["hook"] = hook
-
-
+        updates["hook"] = hook
         logger.info(
-            f"Generated hook: {hook}"
+            f"Stage: Hook Generated - Success. Generated hook: {hook}"
         )
-
 
     except Exception as e:
-
-
         logger.error(
-            f"Hook generation failed: {e}"
+            f"Stage: Hook Generated - Failed: {e}"
         )
+        updates["hook"] = ""
+        updates["hook_error"] = str(e)
 
-
-        state["hook"] = ""
-
-
-        state["hook_error"] = str(e)
-
-
-
-    return state
+    return update_state(state, updates)
