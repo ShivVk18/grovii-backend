@@ -35,7 +35,8 @@ def scene_node(state):
                 "idea": get_state_val(state, "idea"),
                 "hook": get_state_val(state, "hook"),
                 "tone": get_state_val(state, "tone"),
-                "audience": get_state_val(state, "audience")
+                "audience": get_state_val(state, "audience"),
+                "language": get_state_val(state, "language", "English")
             }
         )
 

@@ -12,6 +12,7 @@ class CreateStoryboardRequest(BaseModel):
     audience: str
     duration: int
     platform: str
+    language: Optional[str] = "English"
 
 
 class UpdateStoryboardRequest(BaseModel):
@@ -23,6 +24,7 @@ class UpdateStoryboardRequest(BaseModel):
     audience: Optional[str] = None
     duration: Optional[int] = None
     platform: Optional[str] = None
+    language: Optional[str] = None
 
 
 class StoryboardResponse(BaseModel):
@@ -45,6 +47,8 @@ class StoryboardResponse(BaseModel):
 
     platform: str
     
+    language: Optional[str] = "English"
+    
     thumbnail_url: Optional[str] = None
     
     thumbnail_status: Optional[str] = "pending"
@@ -58,11 +62,38 @@ class StoryboardResponse(BaseModel):
         from_attributes = True
 
 
+class AdvancedSceneDetails(BaseModel):
+    camera_angle: Optional[str] = None
+    camera_movement: Optional[str] = None
+    lighting: Optional[str] = None
+    transition: Optional[str] = None
+    music: Optional[str] = None
+    scene_prompt: Optional[str] = None
+    negative_prompt: Optional[str] = None
+    reference_prompt: Optional[str] = None
+    image_generation_prompt: Optional[str] = None
+    director_notes: Optional[str] = None
+    technical_settings: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
 class SceneResponse(BaseModel):
     id: UUID
     scene_number: int
     title: Optional[str] = None
     duration: Optional[str] = None
+    what_to_show: Optional[str] = None
+    voiceover_example: Optional[str] = None
+    onscreen_text: Optional[str] = None
+    what_to_record: Optional[str] = None
+    what_to_say: Optional[str] = None
+    tips: Optional[str] = None
+    emotion: Optional[str] = None
+    advanced: Optional[dict] = None
+
+    # Legacy fields kept for backward compatibility
     camera_angle: Optional[str] = None
     camera_movement: Optional[str] = None
     lighting: Optional[str] = None
@@ -104,8 +135,17 @@ class HookResponse(BaseModel):
 
 class MusicResponse(BaseModel):
     id: UUID
-    genre: Optional[str] = None
+    song_name: Optional[str] = None
+    artist: Optional[str] = None
+    why_fits: Optional[str] = None
+    best_scene: Optional[str] = None
     mood: Optional[str] = None
+    platform_popularity: Optional[str] = None
+    royalty_free_alt: Optional[str] = None
+    trending_instagram: Optional[list] = None
+    trending_tiktok: Optional[list] = None
+    trending_youtube: Optional[list] = None
+    genre: Optional[str] = None
     class Config:
         from_attributes = True
 

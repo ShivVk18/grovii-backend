@@ -17,6 +17,7 @@ class GraphState(BaseModel):
     duration:int
 
     platform:str
+    language:str="English"
 
 
     #################################

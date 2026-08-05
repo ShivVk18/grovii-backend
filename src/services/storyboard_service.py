@@ -60,13 +60,10 @@ async  def generate_storyboard(payload):
     return result
 
 async def create_ai_storyboard(
-
         db,
-
         payload,
-
-        user_id
-
+        user_id,
+        background_tasks=None
 ):
 
 
@@ -97,8 +94,7 @@ async def create_ai_storyboard(
 
 
         platform=payload.platform,
-
-
+        language=getattr(payload, "language", "English") or "English",
 
         status="pending"
 
@@ -149,6 +145,8 @@ async def create_ai_storyboard(
 
         "platform":payload.platform,
 
+        "language":getattr(payload, "language", "English") or "English",
+
 
         "hook":"",
 
@@ -178,27 +176,41 @@ async def create_ai_storyboard(
 
 
 
-    rq_job = storyboard_queue.enqueue(
+    use_redis = False
+    try:
+        from src.services.redis_service import redis_client
+        if redis_client.ping():
+            rq_job = storyboard_queue.enqueue(
+                generate_storyboard_job,
+                state,
+                storyboard.id,
+                job.id
+            )
+            update_queue_job_id(
+                db,
+                job,
+                rq_job.id
+            )
+            use_redis = True
+    except Exception:
+        use_redis = False
 
-        generate_storyboard_job,
-
-        state,
-
-        storyboard.id,
-        
-        job.id
-
-    )
-
-    update_queue_job_id(
-
-        db,
-
-        job,
-
-        rq_job.id
-
-) 
+    if not use_redis:
+        if background_tasks is not None:
+            background_tasks.add_task(
+                generate_storyboard_job,
+                state,
+                storyboard.id,
+                job.id
+            )
+        else:
+            import asyncio
+            asyncio.create_task(asyncio.to_thread(
+                generate_storyboard_job,
+                state,
+                storyboard.id,
+                job.id
+            )) 
     
     
 
@@ -213,8 +225,27 @@ async def create_ai_storyboard(
 
 
         "status":"pending"
-
     }
+
+def create_storyboard(
+        db: Session,
+        payload: CreateStoryboardRequest,
+        user_id: str
+):
+    storyboard = Storyboard(
+        user_id=user_id,
+        title=f"{payload.tone} Storyboard",
+        idea=payload.idea,
+        goal=payload.goal,
+        tone=payload.tone,
+        style=payload.style,
+        audience=payload.audience,
+        duration=payload.duration,
+        platform=payload.platform,
+        status="created"
+    )
+    return repo_create_storyboard(db, storyboard)
+
 
 def get_storyboards(
         db: Session,

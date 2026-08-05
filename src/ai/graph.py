@@ -1,3 +1,6 @@
+import os
+os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
+
 from langgraph.graph import StateGraph, END
 
 from src.ai.state import GraphState

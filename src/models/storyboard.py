@@ -38,6 +38,7 @@ class Storyboard(Base):
 
     platform=Column(String)
 
+    language=Column(String, default="English")
 
     status=Column(
         String,

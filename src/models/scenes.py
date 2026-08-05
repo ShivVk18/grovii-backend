@@ -84,11 +84,23 @@ class Scene(Base):
 
     script_segment=Column(Text)
 
-
-
     scene_prompt=Column(Text)
 
+    what_to_show=Column(Text)
 
+    voiceover_example=Column(Text)
+
+    onscreen_text=Column(String)
+
+    what_to_record=Column(Text)
+
+    what_to_say=Column(Text)
+
+    tips=Column(Text)
+
+    emotion=Column(String)
+
+    advanced=Column(JSON)
 
     negative_prompt=Column(Text)
 

@@ -1,6 +1,7 @@
-import logging
-from src.ai.graph import graph
+import os
+os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
 
+import logging
 from src.database import SessionLocal
 
 from src.repositories.storyboard_repository import (
@@ -50,9 +51,10 @@ def generate_storyboard_job(
         )
 
         ################################################
-        # LangGraph
+        # LangGraph (Lazy import in child process)
         ################################################
         logger.info("Stage: Graph Started")
+        from src.ai.graph import graph
         state = graph.invoke(
             payload
         )
@@ -87,6 +89,5 @@ def generate_storyboard_job(
                 str(e)
             )
         raise e
-
     finally:
         db.close()

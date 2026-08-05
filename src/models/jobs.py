@@ -83,16 +83,14 @@ class Job(Base):
     )
     
     user = relationship(
-
-        "User"
-
-)
+        "User",
+        overlaps="jobs"
+    )
     
     storyboard = relationship(
-
-        "Storyboard"
-
-)
+        "Storyboard",
+        overlaps="jobs"
+    )
     
     started_at = Column(
 

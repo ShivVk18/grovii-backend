@@ -4,7 +4,8 @@ from fastapi import (
     APIRouter,
     Depends,
     HTTPException,
-    status
+    status,
+    BackgroundTasks
 )
 
 from sqlalchemy.orm import Session
@@ -140,22 +141,17 @@ def delete_storyboard(
     "/generate"
 )
 async def generate_ai_storyboard(
-       payload: CreateStoryboardRequest,
-
+    payload: CreateStoryboardRequest,
+    background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-
     current_user: User = Depends(get_current_user)
 ):
     storyboard = await storyboard_service.create_ai_storyboard(
-
-                     db=db,
-
+        db=db,
         payload=payload,
-
-        user_id=current_user.id
-            )
-
-
+        user_id=current_user.id,
+        background_tasks=background_tasks
+    )
 
     return storyboard
 

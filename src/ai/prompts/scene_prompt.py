@@ -2,470 +2,74 @@ from langchain_core.prompts import PromptTemplate
 
 
 scene_prompt = PromptTemplate(
-
-template="""
-
-
+    template="""
 # ROLE
-
-You are an award-winning Creative Director specializing in
-Instagram Reels, TikTok and YouTube Shorts.
-
-Your job is to transform an idea into a director-grade shotlist.
-
-
+You are an expert Creative Director and Creator Assistant for short-form video (Instagram Reels, TikTok, YouTube Shorts).
+Your goal is to help creators understand what to film and provide natural voiceovers they can adapt in their own style.
 
 # CONTEXT
+Idea: {idea}
+Hook: {hook}
+Tone: {tone}
+Audience: {audience}
+Target Language: {language}
 
-
-Idea:
-{idea}
-
-
-Hook:
-{hook}
-
-
-Tone:
-{tone}
-
-
-Audience:
-{audience}
-
-
+# LANGUAGE REQUIREMENT
+Generate all creator-facing content (title, what_to_show, voiceover_example, onscreen_text, tips, emotion) in the requested target language: {language}.
+If Language is "Hinglish", write in natural, creator-friendly Hinglish (Roman script, e.g., "Main pehle har din late uthta tha, until I tried this 5 AM rule."). Avoid robotic machine translations.
 
 # OBJECTIVE
-
-
-Generate EXACTLY 5 scenes.
-
-
-The scenes should feel like they belong in a professionally
-edited short-form video.
-
-
-
-Scenes must be highly visual.
-
-
-
-Scenes must maintain narrative continuity.
-
-
-
-Scenes should progressively increase engagement.
-
-
-
-Each scene should naturally transition into the next.
-
-
-
-
-
-# FOR EACH SCENE GENERATE
-
-
-
-scene_number
-
-
-title
-
-
-duration
-
-
-camera_angle
-
-
-camera_movement
-
-
-lighting
-
-
-transition
-
-
-music_mood
-
-
-subject
-
-
-broll
-
-
-dos
-
-
-donts
-
-
-script_segment
-
-
-scene_prompt
-
-
-negative_prompt
-
-
-
-
-
-
-# FIELD DEFINITIONS
-
-
-scene_number
-
-Scene sequence number.
-
-
-
-
-title
-
-Short cinematic title.
-
-
-
-
-duration
-
-Examples:
-
-
-0-3 sec
-
-
-3-6 sec
-
-
-6-9 sec
-
-
-
-
-
-camera_angle
-
-Examples:
-
-
-Closeup
-
-Top Down
-
-POV
-
-Wide Shot
-
-Medium Shot
-
-Over Shoulder
-
-
-
-
-camera_movement
-
-
-Examples
-
-
-Slow Zoom
-
-
-Handheld
-
-
-Push In
-
-
-Pan
-
-
-Static
-
-
-Tracking
-
-
-
-
-lighting
-
-
-Examples
-
-
-Blue Hour
-
-
-Golden Hour
-
-
-Warm Indoor
-
-
-Natural Light
-
-
-Soft Shadows
-
-
-
-
-transition
-
-
-Examples
-
-
-Fade
-
-
-Whip Pan
-
-
-Cut
-
-
-Match Cut
-
-
-Blur
-
-
-
-
-music_mood
-
-
-Examples
-
-
-LoFi
-
-
-Inspirational
-
-
-Ambient
-
-
-Energetic
-
-
-
-
-subject
-
-
-Main object or person.
-
-
-
-
-broll
-
-
-Specific b-roll suggestion.
-
-
-
-
-dos
-
-
-List of things creator should do.
-
-
-
-
-donts
-
-
-List of things creator should avoid.
-
-
-
-
-script_segment
-
-
-Voiceover corresponding to scene.
-
-
-
-
-scene_prompt
-
-
-Detailed image generation prompt.
-
-
-Include
-
-
-photorealistic
-
-
-cinematic
-
-
-Sony FX3
-
-
-50mm lens
-
-
-high detail
-
-
-instagram reels frame
-
-
-
-
-
-
-negative_prompt
-
-
-Examples
-
-
-blurry
-
-
-watermark
-
-
-cartoon
-
-
-deformed
-
-
-oversaturated
-
-
-
-
-
-
-
-# REQUIREMENTS
-
-
-
-Generate EXACTLY 5 scenes.
-
-
-Scenes should feel creator-native.
-
-
-Scenes should be optimized for retention.
-
-
-Scenes should be easy to shoot.
-
-
-Scenes should avoid generic advice.
-
-
-Do NOT repeat scenes.
-
-
-Do NOT output markdown.
-
-
-Do NOT explain reasoning.
-
-
-Output ONLY valid JSON.
-
-
-
-
-
-# JSON FORMAT
-
-
-
+Generate EXACTLY 5 scenes. Each scene must include TWO representations:
+
+1. USER FRIENDLY VERSION (for creators with 0 filmmaking knowledge):
+   - title: Short, catchy scene title (e.g., "Morning Alarm").
+   - duration: Duration (e.g., "3 seconds", "5 seconds").
+   - what_to_show: Clear, actionable filming instructions (e.g., "Record yourself turning off your alarm and getting out of bed.").
+   - voiceover_example: 2–3 natural, conversational sentences suitable for social media. Should sound inspiring and personal rather than robotic script lines.
+   - onscreen_text: Short text overlay for viewers watching without sound (e.g., "Habit #1: Wake Up Early").
+   - tips: Simple filming or storytelling advice (e.g., "Film near a window for soft natural light.").
+   - emotion: Emotional vibe (e.g., "Calm", "Energetic", "Curious").
+
+2. ADVANCED VERSION (stored inside 'advanced' JSON object):
+   - camera_angle: e.g. "POV", "Medium Close Up", "Eye Level"
+   - camera_movement: e.g. "Slow Push In", "Handheld", "Static"
+   - lighting: e.g. "Soft Natural Light from Window"
+   - transition: e.g. "Whip Pan to Right", "Quick Cut"
+   - music: e.g. "Lo-Fi Beats", "Upbeat Acoustic"
+   - scene_prompt: Detailed prompt for image/video generation tools.
+   - negative_prompt: Elements to avoid in AI image generation.
+   - reference_prompt: Style reference note.
+   - image_generation_prompt: Photorealistic 9:16 frame prompt.
+   - director_notes: Professional note for camera framing.
+   - technical_settings: Lens/ISO recommendation.
+
+# JSON OUTPUT FORMAT
+Output ONLY valid JSON matching this exact structure:
 [
-
-
-{{
-
-
-"scene_number":1,
-
-
-"title":"",
-
-
-"duration":"",
-
-
-"camera_angle":"",
-
-
-"camera_movement":"",
-
-
-"lighting":"",
-
-
-"transition":"",
-
-
-"music_mood":"",
-
-
-"subject":"",
-
-
-"broll":"",
-
-
-"dos":[],
-
-
-"donts":[],
-
-
-"script_segment":"",
-
-
-"scene_prompt":"",
-
-
-"negative_prompt":""
-
-
-
-}}
-
-
+  {{
+    "scene_number": 1,
+    "title": "Morning Routine",
+    "duration": "3 seconds",
+    "what_to_show": "Record yourself turning off your alarm and getting out of bed.",
+    "voiceover_example": "Most productive days don't happen by accident. They start with a simple morning routine that puts you in control.",
+    "onscreen_text": "Habit #1: Wake Up Early",
+    "tips": "Film near a window for soft natural light.",
+    "emotion": "Calm",
+    "advanced": {{
+      "camera_angle": "Top-down Close Up",
+      "camera_movement": "Slow zoom in on phone screen",
+      "lighting": "Low ambient morning light",
+      "transition": "Cut to next shot",
+      "music": "Soft ambient morning chill",
+      "scene_prompt": "Cinematic close-up of a smartphone on nightstand displaying 5:30 AM alarm in soft morning light, 8k resolution, photorealistic, 9:16 frame",
+      "negative_prompt": "blurry, dark, low resolution, overexposed",
+      "reference_prompt": "Minimalist aesthetic morning routine shot",
+      "image_generation_prompt": "POV angle of hand reaching out to dismiss glowing smartphone alarm on wood table, 35mm lens f/2.0",
+      "director_notes": "Focus on the hand motion for quick engagement.",
+      "technical_settings": "35mm lens, f/2.0, 24fps"
+    }}
+  }}
 ]
-
-
-
 """,
-
-input_variables=[
-
-"idea",
-"hook",
-"tone",
-"audience"
-
-]
-
+    input_variables=["idea", "hook", "tone", "audience", "language"]
 )

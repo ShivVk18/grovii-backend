@@ -3,7 +3,7 @@ import logging
 
 os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
 
-from rq import Worker
+from rq import SimpleWorker
 
 from src.services.redis_service import redis_client
 from src.services.queue_service import storyboard_queue
@@ -11,7 +11,7 @@ from src.services.queue_service import storyboard_queue
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("grovii.worker")
 
-worker = Worker(
+worker = SimpleWorker(
     [storyboard_queue],
     connection=redis_client
 )

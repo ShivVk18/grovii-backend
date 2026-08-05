@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Float, Boolean, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from app.database import Base
+from src.database import Base
 
 class SubscriptionPlan(Base):
     __tablename__ = "subscription_plans"
@@ -16,7 +16,7 @@ class UserSubscription(Base):
     __tablename__ = "user_subscriptions"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(Integer, ForeignKey("users.id"))
+    user_id = Column(String, ForeignKey("users.id"))
     plan_id = Column(Integer, ForeignKey("subscription_plans.id"))
 
     start_date = Column(DateTime(timezone=True), server_default=func.now())
