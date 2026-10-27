@@ -1,6 +1,5 @@
 from langchain_core.prompts import PromptTemplate
 
-
 scene_prompt = PromptTemplate(
     template="""
 # ROLE

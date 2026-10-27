@@ -1,6 +1,5 @@
 from langchain_core.prompts import PromptTemplate
 
-
 script_prompt = PromptTemplate(
 
 template="""

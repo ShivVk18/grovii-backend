@@ -1,6 +1,5 @@
 from langchain_core.prompts import PromptTemplate
 
-
 hashtag_prompt = PromptTemplate(
 
 template="""

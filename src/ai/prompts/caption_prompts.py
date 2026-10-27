@@ -1,6 +1,5 @@
 from langchain_core.prompts import PromptTemplate
 
-
 caption_prompt = PromptTemplate(
 
 template="""

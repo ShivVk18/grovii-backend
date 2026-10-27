@@ -1,6 +1,5 @@
 from langchain_core.prompts import PromptTemplate
 
-
 hook_prompt = PromptTemplate(
 
 template="""
