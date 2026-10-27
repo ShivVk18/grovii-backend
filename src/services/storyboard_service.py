@@ -1,38 +1,36 @@
-from uuid import UUID
-from sqlalchemy.orm import Session
+from datetime import datetime, timedelta, timezone
+
 from fastapi import HTTPException
+from sqlalchemy import func
+from sqlalchemy.orm import Session
+
 from src.ai.graph import graph
+from src.api.errors import AppError
+from src.config import limits
+from src.models.jobs import Job, JobStatus
 from src.models.storyboard import Storyboard
-from src.models.scenes import Scene
+from src.models.users import User
+from src.repositories.job_repository import update_queue_job_id
 from src.repositories.storyboard_repository import (
-
     create_storyboard as repo_create_storyboard,
-
-    get_storyboards as repo_get_storyboards,
-
-    get_storyboard as repo_get_storyboard,
-
-    update_storyboard as repo_update_storyboard,
-
-    delete_storyboard as repo_delete_storyboard,
-
-    get_storyboard_with_relations
-
 )
-from src.services.queue_service import storyboard_queue
-
-from src.services.jobs_services import generate_storyboard_job
+from src.repositories.storyboard_repository import (
+    delete_storyboard as repo_delete_storyboard,
+)
+from src.repositories.storyboard_repository import get_storyboard as repo_get_storyboard
+from src.repositories.storyboard_repository import get_storyboard_with_relations
+from src.repositories.storyboard_repository import (
+    get_storyboards as repo_get_storyboards,
+)
+from src.repositories.storyboard_repository import (
+    update_storyboard as repo_update_storyboard,
+)
 from src.Schemas.storyboard_schema import (
     CreateStoryboardRequest,
-    UpdateStoryboardRequest
+    UpdateStoryboardRequest,
 )
-
-from src.models.jobs import Job
-from src.repositories.job_repository import create_job
-from src.repositories.job_repository import (
-        update_queue_job_id
-)
-
+from src.services.jobs_services import generate_storyboard_job
+from src.services.queue_service import storyboard_queue
 
 
 async  def generate_storyboard(payload):
@@ -59,74 +57,80 @@ async  def generate_storyboard(payload):
     result = await graph.ainvoke(state)
     return result
 
+def reserve_generation(db: Session, payload, user_id: str):
+    """Charge the user and create the storyboard + job in ONE transaction.
+
+    The user's row is locked (SELECT ... FOR UPDATE) for the whole transaction,
+    so concurrent requests from the same user run one after another: each one
+    sees the credits and active-job count left by the previous one. Without the
+    lock, two requests could both read "1 credit left" and both succeed.
+
+    Raises AppError 402 (no credits) or 429 (too many active jobs); in both
+    cases nothing is charged or created.
+    """
+    try:
+        user = db.query(User).filter(User.id == user_id).with_for_update().one()
+
+        active_since = datetime.now(timezone.utc) - timedelta(minutes=limits.ACTIVE_JOB_WINDOW_MINUTES)
+        active = (
+            db.query(func.count(Job.id))
+            .filter(
+                Job.user_id == user_id,
+                Job.status.in_([JobStatus.PENDING, JobStatus.PROCESSING]),
+                Job.created_at >= active_since,
+            )
+            .scalar()
+        )
+        if active >= limits.MAX_ACTIVE_JOBS_PER_USER:
+            raise AppError(
+                429, "too_many_active_jobs",
+                f"You already have {active} storyboards generating. "
+                "Wait for one to finish, then try again.",
+                headers={"Retry-After": "30"},
+            )
+
+        cost = limits.CREDITS_PER_GENERATION
+        if (user.credits or 0) < cost:
+            raise AppError(
+                402, "insufficient_credits",
+                "You're out of credits, so a new storyboard can't be generated right now.",
+                credits=user.credits or 0,
+            )
+        user.credits = (user.credits or 0) - cost
+
+        storyboard = Storyboard(
+            user_id=user_id,
+            title=f"{payload.tone} Storyboard",
+            idea=payload.idea,
+            goal=payload.goal,
+            tone=payload.tone,
+            style=payload.style,
+            audience=payload.audience,
+            duration=payload.duration,
+            platform=payload.platform,
+            language=payload.language,
+            status="pending",
+        )
+        db.add(storyboard)
+        db.flush()
+        job = Job(user_id=user_id, storyboard_id=storyboard.id, credits_charged=cost)
+        db.add(job)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    db.refresh(storyboard)
+    db.refresh(job)
+    return storyboard, job
+
+
 async def create_ai_storyboard(
         db,
         payload,
         user_id,
         background_tasks=None
 ):
-
-
-    storyboard = Storyboard(
-
-        user_id=user_id,
-
-
-        title=f"{payload.tone} Storyboard",
-
-
-        idea=payload.idea,
-
-
-        goal=payload.goal,
-
-
-        tone=payload.tone,
-
-
-        style=payload.style,
-
-
-        audience=payload.audience,
-
-
-        duration=payload.duration,
-
-
-        platform=payload.platform,
-        language=getattr(payload, "language", "English") or "English",
-
-        status="pending"
-
-    )
-
-
-
-    storyboard = repo_create_storyboard(
-
-            db,
-
-            storyboard
-
-    )
-
-
-    job = Job(
-
-    user_id=user_id,
-
-    storyboard_id=storyboard.id
-
-)
-    
-    
-    job = create_job(
-
-        db,
-
-        job
-
-)
+    storyboard, job = reserve_generation(db, payload, user_id)
 
 
     raw_duration = getattr(payload, "duration", 30)
@@ -160,8 +164,9 @@ async def create_ai_storyboard(
 
     use_redis = False
     try:
-        from src.services.redis_service import redis_client
         from rq import Worker
+
+        from src.services.redis_service import redis_client
         if redis_client.ping():
             workers = Worker.all(connection=redis_client)
             active_workers = [

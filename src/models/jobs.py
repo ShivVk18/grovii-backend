@@ -1,17 +1,21 @@
+import enum
+import uuid
+
 from sqlalchemy import (
+    Boolean,
     Column,
-    Integer,
-    ForeignKey,
     DateTime,
     Enum,
+    ForeignKey,
+    Integer,
     String,
-    Text
+    Text,
+    false,
 )
-from sqlalchemy.sql import func
-from src.database import Base
-import enum
 from sqlalchemy.orm import relationship
-import uuid
+from sqlalchemy.sql import func
+
+from src.database import Base
 
 
 class JobStatus(str, enum.Enum):
@@ -105,3 +109,7 @@ class Job(Base):
     default=0
 
 )
+
+    # Credits taken from the user for this job, and whether they were given back.
+    credits_charged = Column(Integer, nullable=False, default=0, server_default="0")
+    credits_refunded = Column(Boolean, nullable=False, default=False, server_default=false())

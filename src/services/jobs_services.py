@@ -1,20 +1,19 @@
 import os
+
 os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
 
 import logging
+
 from src.database import SessionLocal
-
-from src.repositories.storyboard_repository import (
-    save_graph_result
-)
-
 from src.repositories.job_repository import (
     get_job,
+    mark_completed,
+    mark_failed,
     mark_processing,
     update_progress,
-    mark_completed,
-    mark_failed
 )
+from src.repositories.storyboard_repository import save_graph_result
+from src.services.credits_service import is_user_fault, refund_job_credits
 
 logger = logging.getLogger("grovii.jobs_services")
 
@@ -118,6 +117,12 @@ def generate_storyboard_job(
                 )
         except Exception:
             pass
+        # Give the credit back unless the provider refused the user's own input.
+        try:
+            if not is_user_fault(e):
+                refund_job_credits(db, job_id)
+        except Exception as refund_error:
+            logger.error(f"Refund failed for job {job_id}: {refund_error}")
         raise e
     finally:
         db.close()
