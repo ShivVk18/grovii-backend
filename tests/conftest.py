@@ -35,6 +35,11 @@ os.environ["DATABASE_URL"] = _test_database_url()
 os.environ["JWT_SECRET_KEY"] = secrets.token_urlsafe(64)
 # A fake key so any LLM call that a test forgot to mock fails instead of costing money.
 os.environ["OPENAI_API_KEY"] = "sk-test-not-a-real-key"
+# A separate Redis database (wiped before each test). The app and a developer's
+# worker use db 0; tests must never touch it.
+os.environ["REDIS_URL"] = os.environ.get("TEST_REDIS_URL", "redis://localhost:6379/15")
+if os.environ["REDIS_URL"].rstrip("/").endswith("/0"):
+    raise RuntimeError("Refusing to run tests against Redis db 0")
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
@@ -50,6 +55,18 @@ def _schema():
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
+
+
+@pytest.fixture(autouse=True)
+def _clean_redis():
+    from src.services.redis_service import redis_client
+
+    # Check the live connection, not just the env var: never flush db 0.
+    db_index = redis_client.connection_pool.connection_kwargs.get("db", 0)
+    if db_index == 0:
+        raise RuntimeError("Refusing to flush Redis db 0 in tests")
+    redis_client.flushdb()
+    yield
 
 
 @pytest.fixture(autouse=True)
