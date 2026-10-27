@@ -1,5 +1,5 @@
-from typing import List, Dict, Optional
-from pydantic import BaseModel, Field
+from typing import List, Dict, Optional, Any, Union
+from pydantic import BaseModel, Field, field_validator
 
 
 class GraphState(BaseModel):
@@ -14,7 +14,19 @@ class GraphState(BaseModel):
 
     audience:str
 
-    duration:int
+    duration:int = 30
+
+    @field_validator("duration", mode="before")
+    @classmethod
+    def parse_duration(cls, v: Any) -> int:
+        if isinstance(v, int):
+            return v
+        if isinstance(v, str):
+            import re
+            digits = re.findall(r"\d+", v)
+            if digits:
+                return int(digits[0])
+        return 30
 
     platform:str
     language:str="English"

@@ -11,6 +11,7 @@ from src.repositories.storyboard_repository import (
 from src.repositories.job_repository import (
     get_job,
     mark_processing,
+    update_progress,
     mark_completed,
     mark_failed
 )
@@ -29,7 +30,7 @@ def generate_storyboard_job(
         ################################################
         # Fetch Job
         ################################################
-        logger.info("Stage: Fetching Job")
+        logger.info(f"Stage: Fetching Job {job_id}")
         job = get_job(
             db,
             job_id
@@ -51,13 +52,36 @@ def generate_storyboard_job(
         )
 
         ################################################
-        # LangGraph (Lazy import in child process)
+        # LangGraph
         ################################################
         logger.info("Stage: Graph Started")
         from src.ai.graph import graph
-        state = graph.invoke(
-            payload
-        )
+
+        progress_map = {
+            "hook": 15,
+            "hook_regenerator": 25,
+            "director": 45,
+            "script": 60,
+            "caption": 70,
+            "hashtag": 75,
+            "music": 80,
+            "trend": 85,
+            "repurpose": 90,
+            "collector": 95,
+        }
+
+        final_state = dict(payload)
+        for update in graph.stream(payload, stream_mode="updates"):
+            for node_name, node_output in update.items():
+                if isinstance(node_output, dict):
+                    final_state.update(node_output)
+                if node_name in progress_map:
+                    try:
+                        job = get_job(db, job_id)
+                        if job:
+                            update_progress(db, job, progress_map[node_name])
+                    except Exception as pe:
+                        logger.warning(f"Could not update progress for {node_name}: {pe}")
 
         ################################################
         # Persist
@@ -66,28 +90,35 @@ def generate_storyboard_job(
         save_graph_result(
             db,
             storyboard_id,
-            state
+            final_state
         )
 
         ################################################
         # Complete
         ################################################
         logger.info("Stage: Completed")
-        mark_completed(
-            db,
-            job
-        )
+        job = get_job(db, job_id)
+        if job:
+            mark_completed(
+                db,
+                job
+            )
 
-        return state
+        return final_state
 
     except Exception as e:
         logger.error(f"Stage: Failed - Job {job_id} failed: {e}")
-        if 'job' in locals() and job:
-            mark_failed(
-                db,
-                job,
-                str(e)
-            )
+        try:
+            job = get_job(db, job_id)
+            if job:
+                mark_failed(
+                    db,
+                    job,
+                    str(e)
+                )
+        except Exception:
+            pass
         raise e
     finally:
         db.close()
+

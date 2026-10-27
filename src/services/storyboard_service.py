@@ -129,69 +129,59 @@ async def create_ai_storyboard(
 )
 
 
+    raw_duration = getattr(payload, "duration", 30)
+    if isinstance(raw_duration, str):
+        import re
+        digits = re.findall(r"\d+", raw_duration)
+        parsed_duration = int(digits[0]) if digits else 30
+    else:
+        parsed_duration = int(raw_duration or 30)
+
     state = {
-
-        "idea":payload.idea,
-
-        "goal":payload.goal,
-
-        "tone":payload.tone,
-
-        "style":payload.style,
-
-        "audience":payload.audience,
-
-        "duration":payload.duration,
-
-        "platform":payload.platform,
-
-        "language":getattr(payload, "language", "English") or "English",
-
-
-        "hook":"",
-
-        "scenes":[],
-
-        "script":"",
-
-
-        "captions":[],
-
-        "hashtags":[],
-
-        "regenerated_hooks":[],
-
-        "trends":{},
-
-
-        "scene_music":[],
-
-        "repurposed_content":{},
-
-
-        "thumbnail_url":""
-
+        "idea": payload.idea,
+        "goal": payload.goal,
+        "tone": payload.tone,
+        "style": payload.style,
+        "audience": payload.audience,
+        "duration": parsed_duration,
+        "platform": payload.platform,
+        "language": getattr(payload, "language", "English") or "English",
+        "hook": "",
+        "scenes": [],
+        "script": "",
+        "captions": [],
+        "hashtags": [],
+        "regenerated_hooks": [],
+        "trends": {},
+        "scene_music": [],
+        "repurposed_content": {},
+        "thumbnail_url": ""
     }
-
-
-
 
     use_redis = False
     try:
         from src.services.redis_service import redis_client
+        from rq import Worker
         if redis_client.ping():
-            rq_job = storyboard_queue.enqueue(
-                generate_storyboard_job,
-                state,
-                storyboard.id,
-                job.id
-            )
-            update_queue_job_id(
-                db,
-                job,
-                rq_job.id
-            )
-            use_redis = True
+            workers = Worker.all(connection=redis_client)
+            active_workers = [
+                w for w in workers
+                if "storyboard_queue" in [q.name for q in w.queues]
+                and w.get_state() != "dead"
+            ]
+            if active_workers:
+                rq_job = storyboard_queue.enqueue(
+                    generate_storyboard_job,
+                    state,
+                    storyboard.id,
+                    job.id
+                )
+                update_queue_job_id(
+                    db,
+                    job,
+                    rq_job.id
+                )
+                use_redis = True
     except Exception:
         use_redis = False
 
@@ -211,20 +201,11 @@ async def create_ai_storyboard(
                 storyboard.id,
                 job.id
             )) 
-    
-    
-
 
     return {
-
-
-        "job_id":job.id,
-
-
-        "storyboard_id":storyboard.id,
-
-
-        "status":"pending"
+        "job_id": job.id,
+        "storyboard_id": storyboard.id,
+        "status": "pending"
     }
 
 def create_storyboard(
