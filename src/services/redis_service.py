@@ -1,11 +1,11 @@
-from redis import Redis 
+import os
 
-redis_client = Redis(
-    host='localhost',
+from dotenv import load_dotenv
+from redis import Redis
 
-    port=6379,
+load_dotenv()
 
-    db=0,
+# Default matches the old hardcoded value (localhost:6379, db 0).
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
-   
-)
+redis_client = Redis.from_url(REDIS_URL)

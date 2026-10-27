@@ -1,25 +1,12 @@
-from fastapi import (
-    APIRouter,
-    Depends,
-    HTTPException,
-    status
-)
-
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from src.Schemas.auth_schema import (
-    RegisterRequest,
-    LoginRequest
-)
-
-from src.services.auth_service import (
-    register_user,
-    login_user
-)
-
-from src.database import get_db
-
+from src.config import limits
 from src.config.dependencies_config import get_current_user
+from src.database import get_db
+from src.Schemas.auth_schema import LoginRequest, RegisterRequest
+from src.services.auth_service import login_user, register_user
+from src.services.rate_limit import enforce, limit_login_ip, limit_register_ip
 
 router = APIRouter(
     prefix="/auth",
@@ -27,7 +14,7 @@ router = APIRouter(
 )
 
 
-@router.post("/register")
+@router.post("/register", dependencies=[Depends(limit_register_ip)])
 def register(
     payload: RegisterRequest,
     db: Session = Depends(get_db)
@@ -52,11 +39,13 @@ def register(
         )
 
 
-@router.post("/login")
+@router.post("/login", dependencies=[Depends(limit_login_ip)])
 def login(
     payload: LoginRequest,
     db: Session = Depends(get_db)
 ):
+    # Per-account limit slows password guessing spread across many IPs.
+    enforce("login_email", payload.email, limits.RATE_LOGIN_PER_EMAIL)
     try:
         token = login_user(
             db=db,

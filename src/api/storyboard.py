@@ -1,29 +1,18 @@
-from uuid import UUID
 
-from fastapi import (
-    APIRouter,
-    Depends,
-    HTTPException,
-    status,
-    BackgroundTasks
-)
-
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from src.database import get_db
 from src.config.dependencies_config import get_current_user
-
+from src.database import get_db
 from src.models.users import User
-
 from src.Schemas.storyboard_schema import (
     CreateStoryboardRequest,
-    UpdateStoryboardRequest,
+    StoryboardDetailResponse,
     StoryboardResponse,
-    StoryboardDetailResponse
+    UpdateStoryboardRequest,
 )
-
 from src.services import storyboard_service
-
+from src.services.rate_limit import limit_create, limit_generate
 
 router = APIRouter(
     prefix="/storyboards",
@@ -37,7 +26,8 @@ router = APIRouter(
 @router.post(
     "",
     response_model=StoryboardResponse,
-    status_code=status.HTTP_201_CREATED
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(limit_create)],
 )
 def create_storyboard(
         payload: CreateStoryboardRequest,
@@ -138,7 +128,8 @@ def delete_storyboard(
     
    
 @router.post(
-    "/generate"
+    "/generate",
+    dependencies=[Depends(limit_generate)],
 )
 async def generate_ai_storyboard(
     payload: CreateStoryboardRequest,
