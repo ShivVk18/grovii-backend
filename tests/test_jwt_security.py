@@ -12,6 +12,7 @@ from jose import jwt
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 OLD_HARDCODED_SECRET = "shivansh"  # the leaked value from the eval report
+TEST_PASSWORD = "pw-123456789"  # gitleaks:allow  (test-only password, not a secret)
 
 
 # ------------------------------------------------------ secret validation ----
@@ -83,7 +84,7 @@ def test_app_starts_with_strong_secret():
 # ------------------------------------------------------ token verification ----
 @pytest.fixture
 def user_id(client):
-    r = client.post("/auth/register", json={"username": "jwtuser", "email": "jwt@example.com", "password": "pw-123456789"})
+    r = client.post("/auth/register", json={"username": "jwtuser", "email": "jwt@example.com", "password": TEST_PASSWORD})
     assert r.status_code == 200, r.text
     return r.json()["user_id"]
 
@@ -141,7 +142,7 @@ def test_unsigned_alg_none_token_is_rejected(client, user_id):
 def test_issued_token_has_exp_and_iat_matching_config(client, user_id):
     from src.config.security_config import ACCESS_TOKEN_EXPIRE_MINUTES
 
-    r = client.post("/auth/login", json={"email": "jwt@example.com", "password": "pw-123456789"})
+    r = client.post("/auth/login", json={"email": "jwt@example.com", "password": TEST_PASSWORD})
     claims = jwt.get_unverified_claims(r.json()["access_token"])
     assert claims["sub"] == user_id
     assert "iat" in claims and "exp" in claims
