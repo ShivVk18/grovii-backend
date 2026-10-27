@@ -1,0 +1,7 @@
+# Project lint config, so results do not depend on a developer's global config.
+# Starts from ruff's defaults plus import sorting; tighten in later phases.
+target-version = "py312"
+extend-exclude = ["venv", "migrations"]
+
+[lint]
+select = ["E4", "E7", "E9", "F", "I"]

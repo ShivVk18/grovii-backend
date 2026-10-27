@@ -1,0 +1,5 @@
+# Dev and CI tools only. Install with: pip install -r requirements.txt -r requirements-dev.txt
+ruff==0.17.3
+mypy==2.4.0
+pytest-cov==7.1.0
+coverage==7.17.0
