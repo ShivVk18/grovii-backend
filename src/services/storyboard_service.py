@@ -31,6 +31,7 @@ from src.Schemas.storyboard_schema import (
 )
 from src.services.jobs_services import generate_storyboard_job
 from src.services.queue_service import storyboard_queue
+from src.services.spend_service import ensure_daily_budget_available
 
 
 async  def generate_storyboard(payload):
@@ -88,6 +89,9 @@ def reserve_generation(db: Session, payload, user_id: str):
                 "Wait for one to finish, then try again.",
                 headers={"Retry-After": "30"},
             )
+
+        # Global LLM spend ceiling for today (503 if reached).
+        ensure_daily_budget_available(db)
 
         cost = limits.CREDITS_PER_GENERATION
         if (user.credits or 0) < cost:

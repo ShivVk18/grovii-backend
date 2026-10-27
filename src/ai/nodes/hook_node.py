@@ -36,7 +36,7 @@ def update_state(state, updates):
     )
 )
 def generate_hook(payload):
-    llm = openai_service.get_llm()
+    llm = openai_service.get_llm("hook")
     chain = hook_prompt | llm
     return chain.invoke(payload)
 

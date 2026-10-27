@@ -26,7 +26,7 @@ def scene_node(state):
     logger.info("Stage: Scenes Generated - Processing Started")
     updates = {}
     try:
-        llm = openai_service.get_llm()
+        llm = openai_service.get_llm("director")
         parser = JsonOutputParser()
         chain = scene_prompt | llm | parser
 

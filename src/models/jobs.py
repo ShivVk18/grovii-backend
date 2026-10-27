@@ -8,6 +8,7 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     Integer,
+    Numeric,
     String,
     Text,
     false,
@@ -113,3 +114,11 @@ class Job(Base):
     # Credits taken from the user for this job, and whether they were given back.
     credits_charged = Column(Integer, nullable=False, default=0, server_default="0")
     credits_refunded = Column(Boolean, nullable=False, default=False, server_default=false())
+
+    # LLM usage for this job, recorded when it finishes (success or failure).
+    # cost_usd is an estimate from token counts x configured prices; NULL means
+    # not recorded yet (job still queued or running).
+    prompt_tokens = Column(Integer, nullable=True)
+    completion_tokens = Column(Integer, nullable=True)
+    llm_calls = Column(Integer, nullable=True)
+    cost_usd = Column(Numeric(12, 6), nullable=True)

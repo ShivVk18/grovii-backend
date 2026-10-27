@@ -19,7 +19,7 @@ def update_state(state, updates):
 
 
 def repurpose_node(state):
-    llm = openai_service.get_llm()
+    llm = openai_service.get_llm("repurpose")
     parser = JsonOutputParser(pydantic_object=RepurposeOutput)
     chain = repurpose_content_prompt | llm | parser
 

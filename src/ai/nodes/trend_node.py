@@ -19,7 +19,7 @@ def update_state(state, updates):
 
 
 def trend_node(state):
-    llm = openai_service.get_llm()
+    llm = openai_service.get_llm("trend")
     parser = JsonOutputParser(pydantic_object=TrendAnalyzerOutput)
     chain = trend_analyzer_prompt | llm | parser
 

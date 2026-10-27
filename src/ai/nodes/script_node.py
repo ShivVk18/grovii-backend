@@ -56,7 +56,7 @@ def script_node(state):
     logger.info("Stage: Script Generated - Processing Started")
     updates = {}
     try:
-        llm = openai_service.get_llm()
+        llm = openai_service.get_llm("script")
         chain = script_prompt | llm
 
         scenes = get_state_val(state, "scenes", [])

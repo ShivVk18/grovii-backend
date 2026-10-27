@@ -23,7 +23,7 @@ def update_state(state, updates):
 
 def music_node(state):
     try:
-        llm = openai_service.get_llm(temperature=0.7)
+        llm = openai_service.get_llm("music", temperature=0.7)
         parser = JsonOutputParser(pydantic_object=MusicSuggestionOutput)
         chain = music_suggestion_prompt | llm | parser
 

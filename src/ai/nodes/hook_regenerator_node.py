@@ -19,7 +19,7 @@ def update_state(state, updates):
 
 
 def hook_regenerator_node(state):
-    llm = openai_service.get_llm()
+    llm = openai_service.get_llm("hook_regenerator")
     parser = JsonOutputParser(pydantic_object=HookRegeneratorOutput)
     chain = hook_regenerator_prompt | llm | parser
 

@@ -36,7 +36,7 @@ def update_state(state, updates):
     )
 )
 def generate_hashtags(payload):
-    llm = openai_service.get_llm()
+    llm = openai_service.get_llm("hashtag")
     parser = JsonOutputParser()
     chain = hashtag_prompt | llm | parser
     return chain.invoke(payload)

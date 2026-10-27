@@ -14,6 +14,8 @@ from src.repositories.job_repository import (
 )
 from src.repositories.storyboard_repository import save_graph_result
 from src.services.credits_service import is_user_fault, refund_job_credits
+from src.services.llm_usage import BudgetExceeded, metered
+from src.services.spend_service import record_job_usage
 
 logger = logging.getLogger("grovii.jobs_services")
 
@@ -24,6 +26,9 @@ def generate_storyboard_job(
         job_id
 ):
     db = SessionLocal()
+    # Every LLM call made while this job runs is counted against its token budget.
+    usage_scope = metered()
+    meter = usage_scope.__enter__()
 
     try:
         ################################################
@@ -82,6 +87,12 @@ def generate_storyboard_job(
                     except Exception as pe:
                         logger.warning(f"Could not update progress for {node_name}: {pe}")
 
+        # Nodes catch their own errors, so a refused call shows up only on the meter.
+        if meter.exceeded:
+            raise BudgetExceeded(
+                f"Generation stopped: the job reached its token budget ({meter.budget} tokens)."
+            )
+
         ################################################
         # Persist
         ################################################
@@ -125,5 +136,11 @@ def generate_storyboard_job(
             logger.error(f"Refund failed for job {job_id}: {refund_error}")
         raise e
     finally:
+        usage_scope.__exit__(None, None, None)
+        # Record what this job spent, whether it succeeded or failed.
+        try:
+            record_job_usage(db, job_id, meter)
+        except Exception as usage_error:
+            logger.error(f"Could not record LLM usage for job {job_id}: {usage_error}")
         db.close()
 

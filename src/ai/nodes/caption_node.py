@@ -36,7 +36,7 @@ def update_state(state, updates):
     )
 )
 def generate_captions(payload):
-    llm = openai_service.get_llm()
+    llm = openai_service.get_llm("caption")
     parser = JsonOutputParser()
     chain = caption_prompt | llm | parser
     return chain.invoke(payload)
