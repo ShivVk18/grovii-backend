@@ -60,6 +60,21 @@ def _clean_tables():
             conn.execute(table.delete())
 
 
+@pytest.fixture(autouse=True)
+def dispatched():
+    """Safety net: no API test may run the real pipeline or push to the real
+    Redis queue (a developer's worker may be listening on it). Tests that need
+    the job runner call src.services.jobs_services.generate_storyboard_job directly.
+    Yields the mock that replaces the job runner, so tests can assert on dispatch."""
+    from unittest.mock import MagicMock, patch
+
+    from src.services import storyboard_service
+
+    with patch.object(storyboard_service, "generate_storyboard_job", MagicMock(name="job_runner")) as runner, \
+         patch.object(storyboard_service.storyboard_queue, "enqueue", MagicMock(name="enqueue", return_value=MagicMock(id="rq-test"))):
+        yield runner
+
+
 @pytest.fixture
 def db():
     session = SessionLocal()
