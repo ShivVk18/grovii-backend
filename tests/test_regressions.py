@@ -13,11 +13,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 from pydantic import ValidationError
 
-from tests.conftest import VALID_STORYBOARD
-
-from src.Schemas.storyboard_schema import CreateStoryboardRequest
 from src.models.jobs import Job, JobStatus
 from src.models.storyboard import Storyboard
+from src.Schemas.storyboard_schema import CreateStoryboardRequest
+from tests.conftest import VALID_STORYBOARD
 
 pytestmark = pytest.mark.regression
 

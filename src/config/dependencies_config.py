@@ -1,14 +1,11 @@
-from fastapi import (
-    Depends,
-    HTTPException
-)
+from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer
 from jose import JWTError
 from sqlalchemy.orm import Session
 
+from src.config.security_config import decode_access_token
 from src.database import get_db
 from src.models.users import User
-from src.config.security_config import decode_access_token
 
 security = HTTPBearer()
 

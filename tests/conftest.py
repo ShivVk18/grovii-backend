@@ -39,8 +39,8 @@ os.environ["OPENAI_API_KEY"] = "sk-test-not-a-real-key"
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
 
-from src.database import Base, SessionLocal, engine  # noqa: E402
 import src.models  # noqa: E402,F401  (registers all tables)
+from src.database import Base, SessionLocal, engine  # noqa: E402
 from src.models.users import User  # noqa: E402
 
 
