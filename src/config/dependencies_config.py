@@ -3,12 +3,12 @@ from fastapi import (
     HTTPException
 )
 from fastapi.security import HTTPBearer
-from jose import jwt, JWTError
+from jose import JWTError
 from sqlalchemy.orm import Session
 
 from src.database import get_db
 from src.models.users import User
-from src.config.security_config import SECRET_KEY, ALGORITHM
+from src.config.security_config import decode_access_token
 
 security = HTTPBearer()
 
@@ -19,11 +19,7 @@ def get_current_user(
     token = credentials.credentials
 
     try:
-        payload = jwt.decode(
-            token,
-            SECRET_KEY,
-            algorithms=[ALGORITHM]
-        )
+        payload = decode_access_token(token)
 
         user_id_str = payload.get("sub")
 
