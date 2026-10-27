@@ -1,0 +1,6 @@
+# Findings reviewed and confirmed as false positives. Format: commit:file:rule:line
+# Test-only password literal (moved to a gitleaks:allow constant afterwards).
+90792b1de9499219e95a61f0c2c6379424ef76c1:tests/test_jwt_security.py:generic-api-key:86
+90792b1de9499219e95a61f0c2c6379424ef76c1:tests/test_jwt_security.py:generic-api-key:144
+# NOTE: the real .env leaks in history are deliberately NOT listed here.
+# They are fixed by rotating the credentials, not by ignoring them.

@@ -1,0 +1,10 @@
+#!/bin/sh
+# Block commits that contain secrets. Installed by scripts/install-git-hooks.sh.
+# Fails closed: if gitleaks is missing, the commit is blocked with install steps.
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "pre-commit: gitleaks is not installed, so secrets cannot be checked." >&2
+  echo "  Install it:  brew install gitleaks   (macOS)" >&2
+  echo "  or download: https://github.com/gitleaks/gitleaks/releases" >&2
+  exit 1
+fi
+exec gitleaks git --pre-commit --staged --redact --no-banner --verbose -c .gitleaks.toml

@@ -1,0 +1,32 @@
+# gitleaks config: default rules plus rules for credentials this project uses
+# that the defaults do not catch.
+title = "grovii gitleaks config"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "database-url-with-password"
+description = "Database or Redis connection string with an inline password"
+regex = '''(?i)\b(?:postgres(?:ql)?|mysql|mongodb(?:\+srv)?|rediss?)(?:\+\w+)?://[^:\s/@]+:([^@\s]{3,})@'''
+secretGroup = 1
+keywords = ["postgres", "mysql", "mongodb", "redis"]
+
+  [[rules.allowlists]]
+  description = "Obvious placeholders in docs and examples"
+  regexTarget = "secret"
+  regexes = ['''(?i)^(password|pass|pwd|secret|changeme|\*+|x+|<[^>]+>|\$\{[^}]+\}|\$[A-Z_]+)$''']
+
+[[rules]]
+id = "imagekit-private-key"
+description = "ImageKit private API key"
+regex = '''\b(private_[A-Za-z0-9+/=]{20,})'''
+secretGroup = 1
+keywords = ["private_"]
+
+[[rules]]
+id = "hardcoded-app-secret"
+description = "Secret key assigned as a string literal in code (how VULN-01 happened)"
+regex = '''(?i)\b(?:secret_key|jwt_secret(?:_key)?|signing_key)\s*[:=]\s*["']([^"'\s]{4,})["']'''
+secretGroup = 1
+keywords = ["secret_key", "jwt_secret", "signing_key"]
