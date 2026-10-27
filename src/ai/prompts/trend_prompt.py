@@ -16,3 +16,9 @@ trend_analyzer_prompt = PromptTemplate(
     input_variables=["idea", "platform", "audience"],
     partial_variables={"format_instructions": ""}
 )
+
+
+# Wrap user text in <user_input> and add the injection-safety preamble.
+from src.ai.prompt_safety import harden  # noqa: E402
+
+trend_analyzer_prompt = harden(trend_analyzer_prompt)

@@ -19,3 +19,9 @@ hook_regenerator_prompt = PromptTemplate(
     input_variables=["idea", "audience", "tone", "platform", "hook"],
     partial_variables={"format_instructions": ""}
 )
+
+
+# Wrap user text in <user_input> and add the injection-safety preamble.
+from src.ai.prompt_safety import harden  # noqa: E402
+
+hook_regenerator_prompt = harden(hook_regenerator_prompt)

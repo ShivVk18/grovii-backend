@@ -4,6 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, field_validator
 
+from src.ai.prompt_safety import neutralize_delimiters
 from src.Schemas.options import GOALS, LANGUAGES, PLATFORMS, STYLES, TONES, canonical
 
 IDEA_MIN, IDEA_MAX = 10, 1000
@@ -16,7 +17,7 @@ def _text(value: Any, label: str, lo: int, hi: int) -> str:
     """Trim whitespace and enforce a length range, with a message the UI can show."""
     if not isinstance(value, str):
         raise ValueError(f"{label} must be text.")
-    value = value.strip()
+    value = neutralize_delimiters(value.strip())
     if len(value) < lo:
         raise ValueError(f"{label} must be at least {lo} characters.")
     if len(value) > hi:

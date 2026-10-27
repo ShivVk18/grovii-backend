@@ -73,3 +73,9 @@ Output ONLY valid JSON matching this exact structure:
 """,
     input_variables=["idea", "hook", "tone", "audience", "language"]
 )
+
+
+# Wrap user text in <user_input> and add the injection-safety preamble.
+from src.ai.prompt_safety import harden  # noqa: E402
+
+scene_prompt = harden(scene_prompt)

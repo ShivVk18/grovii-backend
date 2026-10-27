@@ -60,3 +60,9 @@ music_suggestion_prompt = PromptTemplate(
     partial_variables={"format_instructions": ""}
 )
 
+
+
+# Wrap user text in <user_input> and add the injection-safety preamble.
+from src.ai.prompt_safety import harden  # noqa: E402
+
+music_suggestion_prompt = harden(music_suggestion_prompt)

@@ -20,3 +20,9 @@ repurpose_content_prompt = PromptTemplate(
     input_variables=["script"],
     partial_variables={"format_instructions": ""}
 )
+
+
+# Wrap user text in <user_input> and add the injection-safety preamble.
+from src.ai.prompt_safety import harden  # noqa: E402
+
+repurpose_content_prompt = harden(repurpose_content_prompt)

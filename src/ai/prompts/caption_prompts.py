@@ -284,3 +284,9 @@ input_variables=[
 ]
 
 )
+
+
+# Wrap user text in <user_input> and add the injection-safety preamble.
+from src.ai.prompt_safety import harden  # noqa: E402
+
+caption_prompt = harden(caption_prompt)
