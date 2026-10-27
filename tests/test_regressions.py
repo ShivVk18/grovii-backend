@@ -133,7 +133,7 @@ BAD_INPUTS = [
 ]
 
 
-@pytest.mark.xfail(reason="VAL-01 no input validation: fixed in Phase B", strict=True)
+# VAL-01 fixed in Phase B (see tests/test_validation.py for full boundary coverage).
 @pytest.mark.parametrize("field,value", BAD_INPUTS, ids=[f"{f}={str(v)[:12]!r}" for f, v in BAD_INPUTS])
 def test_val01_create_request_rejects_bad_input(field, value):
     with pytest.raises(ValidationError):

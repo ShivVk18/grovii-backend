@@ -10,6 +10,7 @@ from src.database import Base, engine
 # Import all models so they're registered with Base.metadata
 import src.models  # noqa: F401
 
+from src.api.errors import register_error_handlers
 from src.api.auth import router as auth_router
 from src.api.storyboard import router as storyboard_router
 
@@ -50,6 +51,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Grovii Backend", lifespan=lifespan)
+register_error_handlers(app)
 print("Adding CORS middleware...")
 
 app.add_middleware(

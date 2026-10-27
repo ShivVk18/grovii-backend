@@ -1,10 +1,85 @@
-from pydantic import BaseModel
-from uuid import UUID
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
+from uuid import UUID
+
+from pydantic import BaseModel, field_validator
+
+from src.Schemas.options import GOALS, LANGUAGES, PLATFORMS, STYLES, TONES, canonical
+
+IDEA_MIN, IDEA_MAX = 10, 1000
+AUDIENCE_MIN, AUDIENCE_MAX = 2, 200
+TITLE_MIN, TITLE_MAX = 1, 200
+DURATION_MIN, DURATION_MAX = 15, 180
 
 
-class CreateStoryboardRequest(BaseModel):
+def _text(value: Any, label: str, lo: int, hi: int) -> str:
+    """Trim whitespace and enforce a length range, with a message the UI can show."""
+    if not isinstance(value, str):
+        raise ValueError(f"{label} must be text.")
+    value = value.strip()
+    if len(value) < lo:
+        raise ValueError(f"{label} must be at least {lo} characters.")
+    if len(value) > hi:
+        raise ValueError(f"{label} must be at most {hi} characters.")
+    return value
+
+
+def _duration(value: Any) -> int:
+    message = f"Duration must be between {DURATION_MIN} and {DURATION_MAX} seconds."
+    if isinstance(value, bool):
+        raise ValueError(message)
+    if isinstance(value, str) and value.strip().isdigit():
+        value = int(value.strip())
+    if not isinstance(value, int) or not DURATION_MIN <= value <= DURATION_MAX:
+        raise ValueError(message)
+    return value
+
+
+class _StoryboardFields(BaseModel):
+    """Validators shared by create and update. A None value means "not given"."""
+
+    @field_validator("idea", mode="before", check_fields=False)
+    @classmethod
+    def _idea(cls, v):
+        return None if v is None else _text(v, "Idea", IDEA_MIN, IDEA_MAX)
+
+    @field_validator("audience", mode="before", check_fields=False)
+    @classmethod
+    def _audience(cls, v):
+        return None if v is None else _text(v, "Audience", AUDIENCE_MIN, AUDIENCE_MAX)
+
+    @field_validator("duration", mode="before", check_fields=False)
+    @classmethod
+    def _dur(cls, v):
+        return None if v is None else _duration(v)
+
+    @field_validator("platform", mode="before", check_fields=False)
+    @classmethod
+    def _platform(cls, v):
+        return None if v is None else canonical(PLATFORMS, v, "Platform")
+
+    @field_validator("goal", mode="before", check_fields=False)
+    @classmethod
+    def _goal(cls, v):
+        return None if v is None else canonical(GOALS, v, "Goal")
+
+    @field_validator("tone", mode="before", check_fields=False)
+    @classmethod
+    def _tone(cls, v):
+        return None if v is None else canonical(TONES, v, "Tone")
+
+    @field_validator("style", mode="before", check_fields=False)
+    @classmethod
+    def _style(cls, v):
+        return None if v is None else canonical(STYLES, v, "Style")
+
+    @field_validator("language", mode="before", check_fields=False)
+    @classmethod
+    def _language(cls, v):
+        return None if v is None else canonical(LANGUAGES, v, "Language")
+
+
+class CreateStoryboardRequest(_StoryboardFields):
     idea: str
     goal: str
     tone: str
@@ -12,10 +87,15 @@ class CreateStoryboardRequest(BaseModel):
     audience: str
     duration: int
     platform: str
-    language: Optional[str] = "English"
+    language: str = "English"
+
+    @field_validator("language", mode="before")
+    @classmethod
+    def _language_default(cls, v):
+        return "English" if v is None else v
 
 
-class UpdateStoryboardRequest(BaseModel):
+class UpdateStoryboardRequest(_StoryboardFields):
     title: Optional[str] = None
     idea: Optional[str] = None
     goal: Optional[str] = None
@@ -25,6 +105,11 @@ class UpdateStoryboardRequest(BaseModel):
     duration: Optional[int] = None
     platform: Optional[str] = None
     language: Optional[str] = None
+
+    @field_validator("title", mode="before")
+    @classmethod
+    def _title(cls, v):
+        return None if v is None else _text(v, "Title", TITLE_MIN, TITLE_MAX)
 
 
 class StoryboardResponse(BaseModel):
