@@ -63,24 +63,34 @@ grovii-backend/
 
 ## Environment Variables
 
-Create a `.env` file in the root directory based on the `.env.example` template:
+Copy `.env.example` to `.env` and fill in real values. `.env` is git-ignored; never commit it.
 
-```env
-# Server Configuration
-PORT=8000
-ENVIRONMENT=development
-
-# Database Configuration
-DATABASE_URL=sqlite:///./grovii.db
-
-# Authentication
-JWT_SECRET_KEY=your_super_secret_jwt_key
-JWT_ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-
-# LLM Configuration
-OPENAI_API_KEY=your_openai_api_key_here
+```bash
+cp .env.example .env
 ```
+
+`JWT_SECRET_KEY` is required. The API **refuses to start** if it is missing,
+shorter than 32 bytes, or a known placeholder. Generate a fresh value for each
+environment:
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(64))"
+```
+
+Changing the secret logs every user out, because existing tokens stop verifying.
+
+### Secret scanning
+
+Commits are scanned for secrets with [gitleaks](https://github.com/gitleaks/gitleaks).
+Run once per clone:
+
+```bash
+brew install gitleaks          # or download a release binary
+./scripts/install-git-hooks.sh
+```
+
+The hook blocks any commit that contains a secret. CI runs the same scan on
+every pull request.
 
 ## Database Setup
 
@@ -122,12 +132,20 @@ Key endpoints available via the API:
 
 ## Testing
 
-This project uses `pytest` for unit and integration testing.
+Tests run against a local Postgres database named `grovii_test` (created once
+with `createdb grovii_test`). They never call OpenAI: a fake key is forced.
 
-To run the test suite:
 ```bash
-pytest test_api.py test_graph.py test_new_nodes.py -v
+pip install -r requirements.txt -r requirements-dev.txt
+pytest                      # runs tests/ only
+pytest --cov=src            # with coverage
+ruff check src tests        # lint
+mypy src                    # type check
 ```
+
+`tests/test_regressions.py` holds tests for known bugs, marked `xfail` until
+fixed. The old root scripts `test_api.py` and `test_graph.py` call a live
+server and the real OpenAI API, so they are not part of the suite.
 
 ## Deployment Guidelines
 
