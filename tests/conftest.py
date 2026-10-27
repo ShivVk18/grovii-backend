@@ -103,11 +103,12 @@ def auth_headers(client):
 
 VALID_STORYBOARD = {
     "idea": "A 30 second espresso routine for busy mornings",
-    "goal": "Educate",
-    "tone": "Calm",
-    "style": "Cinematic",
+    # Same shape and values the frontend create form sends.
+    "goal": "educate",
+    "tone": "calm",
+    "style": "talking_head",
     "audience": "Coffee lovers",
     "duration": 30,
-    "platform": "Instagram Reels",
+    "platform": "reels",
     "language": "English",
 }
