@@ -57,7 +57,7 @@ def _check_not_locked(email: str) -> None:
             retry = ttl if ttl > 0 else settings.LOGIN_LOCK_SECONDS
             raise AppError(
                 429, "login_locked",
-                f"Too many wrong attempts. Try again in {max(1, retry // 60)} minute(s), or reset your password.",
+                f"Too many wrong attempts. Try again in {max(1, -(-retry // 60))} minute(s).",
                 headers={"Retry-After": str(retry)}, retry_after=retry,
             )
     except AppError:
