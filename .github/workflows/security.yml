@@ -56,6 +56,30 @@ jobs:
           export JWT_SECRET_KEY="$(python -c 'import secrets;print(secrets.token_urlsafe(64))')"
           alembic upgrade head && alembic check
 
+  lint-and-types:
+    # Ratchet: fails if ruff/mypy find more problems than ci/baselines.json allows.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+      - run: pip install -r requirements.txt -r requirements-dev.txt
+      - run: python scripts/check_baselines.py
+
+  docker-image:
+    # The production image must build; it is not pushed (Render builds from git).
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t grovii-backend:ci .
+      - name: Image runs as non-root and imports the app
+        run: |
+          test "$(docker run --rm --entrypoint id grovii-backend:ci -u)" = "10001"
+          docker run --rm -e JWT_SECRET_KEY="$(python3 -c 'import secrets;print(secrets.token_urlsafe(64))')" \
+            -e DATABASE_URL=postgresql://x:y@localhost:5432/z --entrypoint python grovii-backend:ci -c "import src.main"
+
   dependency-audit:
     runs-on: ubuntu-24.04
     steps:

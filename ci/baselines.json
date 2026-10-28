@@ -1,0 +1,5 @@
+{
+  "_comment": "Known lint/type debt (BACKLOG #24 legacy Column models, older files). CI fails if a count goes UP. Lower these numbers when you fix some.",
+  "ruff": 39,
+  "mypy": 37
+}

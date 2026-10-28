@@ -1,0 +1,67 @@
+name: deploy
+
+# Staging: every push to main, after tests pass, deploys to Render staging and
+# checks it. Production: manual ("Run workflow"), gated by the GitHub
+# environment "production" (add required reviewers in repo settings), and only
+# for a commit that is already live on staging.
+#
+# Needs repository secrets (Settings > Secrets and variables > Actions):
+#   RENDER_DEPLOY_HOOK_STAGING_API, RENDER_DEPLOY_HOOK_STAGING_WORKER
+#   RENDER_DEPLOY_HOOK_PRODUCTION_API, RENDER_DEPLOY_HOOK_PRODUCTION_WORKER
+# and repository variables:
+#   STAGING_API_URL, PRODUCTION_API_URL   (e.g. https://grovii-api-staging.onrender.com)
+# Rollback: see docs/RUNBOOK.md ("Roll back").
+
+on:
+  workflow_run:
+    workflows: [tests-and-security]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Where to deploy"
+        type: choice
+        options: [production]
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.event_name == 'workflow_dispatch' && 'production' || 'staging' }}
+  cancel-in-progress: false
+
+jobs:
+  staging:
+    if: github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: "${{ github.event.workflow_run.head_sha }}" }
+      - name: Trigger Render deploys (migrations run in the API's pre-deploy step)
+        run: |
+          curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_STAGING_API }}&ref=${{ github.event.workflow_run.head_sha }}"
+          curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_STAGING_WORKER }}&ref=${{ github.event.workflow_run.head_sha }}"
+      - name: Wait for the new release to be live and ready
+        run: scripts/wait_for_release.sh "${{ vars.STAGING_API_URL }}" "${{ github.event.workflow_run.head_sha }}"
+
+  production:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    environment: production   # required reviewers approve here
+    steps:
+      - uses: actions/checkout@v4
+      - name: Only promote what staging is running
+        id: sha
+        run: |
+          live=$(curl -fsS "${{ vars.STAGING_API_URL }}/health" | python3 -c 'import json,sys;print(json.load(sys.stdin)["release"])')
+          echo "Staging runs $live"
+          echo "release=$live" >> "$GITHUB_OUTPUT"
+      - name: Trigger Render production deploys
+        run: |
+          curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_PRODUCTION_API }}&ref=${{ steps.sha.outputs.release }}"
+          curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_PRODUCTION_WORKER }}&ref=${{ steps.sha.outputs.release }}"
+      - name: Wait for the new release to be live and ready
+        run: scripts/wait_for_release.sh "${{ vars.PRODUCTION_API_URL }}" "${{ steps.sha.outputs.release }}"
