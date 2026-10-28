@@ -11,6 +11,9 @@ from src.database import Base, engine
 import src.models  # noqa: F401
 
 from src.api.errors import register_error_handlers
+from src.api.middleware import SecurityMiddleware
+from src.config import security_settings
+from src.config.log_safety import install_redaction
 from src.api.auth import router as auth_router
 from src.api.storyboard import router as storyboard_router
 
@@ -52,15 +55,21 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Grovii Backend", lifespan=lifespan)
 register_error_handlers(app)
-print("Adding CORS middleware...")
+install_redaction()
 
+# Explicit origins only (CORS_ORIGINS env). In production the browser calls the
+# frontend's own domain and Next.js proxies to this API, so CORS mostly matters
+# in local development.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=security_settings.CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
+    allow_headers=["Content-Type", "Authorization", security_settings.CSRF_HEADER],
+    max_age=600,
 )
+# Added last = runs first: size limit, Origin check, security headers.
+app.add_middleware(SecurityMiddleware)
 
 
 app.include_router(auth_router)
@@ -70,3 +79,8 @@ app.include_router(storyboard_router)
 @app.get("/")
 def root():
     return {"message": "Welcome to Grovii API!"}
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}

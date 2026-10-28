@@ -10,12 +10,14 @@ error). Reason: credits and the active-job cap (both in Postgres) still protect
 the LLM budget, and a Redis outage should not lock every user out of login.
 """
 import hashlib
+import hmac
 import logging
 
 from fastapi import Depends, Request
 
 from src.api.errors import AppError
 from src.config import limits
+from src.config import security_settings as settings
 from src.config.dependencies_config import get_current_user
 from src.services.redis_service import redis_client
 
@@ -30,8 +32,19 @@ def _retry_after(ttl: int, window: int) -> int:
 
 
 def client_ip(request: Request) -> str:
-    # Only the direct peer address. X-Forwarded-For is NOT trusted here, because
-    # anyone can set it. Behind a proxy, configure trusted proxies (Phase G).
+    """The caller's IP for rate limits.
+
+    In production every browser request arrives through the Next.js proxy, so
+    the direct peer is the proxy. The proxy sends the real client IP in
+    X-Grovii-Client-IP together with a shared secret; the header is trusted only
+    when that secret matches (anyone can send X-Forwarded-For).
+    """
+    secret = settings.PROXY_SHARED_SECRET
+    if secret:
+        presented = request.headers.get(settings.PROXY_SECRET_HEADER, "")
+        forwarded = request.headers.get(settings.CLIENT_IP_HEADER, "").strip()
+        if forwarded and hmac.compare_digest(presented, secret):
+            return forwarded[:64]
     return request.client.host if request.client else "unknown"
 
 
