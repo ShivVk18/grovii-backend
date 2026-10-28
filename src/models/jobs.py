@@ -13,6 +13,7 @@ from sqlalchemy import (
     Text,
     false,
 )
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -121,3 +122,5 @@ class Job(Base):
     completion_tokens = Column(Integer, nullable=True)
     llm_calls = Column(Integer, nullable=True)
     cost_usd = Column(Numeric(12, 6), nullable=True)
+    # Milliseconds per pipeline step of the last attempt, e.g. {"hook": 2100, ...} (Phase G).
+    node_timings = Column(JSONB, nullable=True)

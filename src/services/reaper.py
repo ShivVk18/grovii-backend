@@ -64,7 +64,13 @@ def start_background_reaper(stop: threading.Event | None = None) -> threading.Th
                 if count:
                     logger.warning("Reaper failed and refunded %s stuck job(s)", count)
             except Exception as e:  # noqa: BLE001 - keep the loop alive
-                logger.error("Reaper run failed: %s", e)
+                logger.error("Reaper run failed: %s", type(e).__name__)
+            try:
+                from src.services.ops_alerts import check_and_alert
+
+                check_and_alert()  # failed-job spikes, queue backlog, spend (Phase G)
+            except Exception as e:  # noqa: BLE001
+                logger.error("Alert check failed: %s", type(e).__name__)
 
     thread = threading.Thread(target=loop, name="grovii-reaper", daemon=True)
     thread.start()

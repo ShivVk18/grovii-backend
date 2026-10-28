@@ -19,6 +19,10 @@ PUBLIC = {
     ("POST", "/auth/register"),
     ("POST", "/auth/login"),
     ("GET", "/health"),
+    # Phase G ops endpoints: no user data. /metrics has its own token (test_ops).
+    ("GET", "/ready"),
+    ("GET", "/health/deep"),
+    ("GET", "/metrics"),
     # FastAPI docs (disabled in production by Phase F config, see test_security_hardening)
     ("GET", "/openapi.json"), ("GET", "/docs"), ("GET", "/docs/oauth2-redirect"), ("GET", "/redoc"),
 }

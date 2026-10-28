@@ -93,3 +93,51 @@ class SecurityMiddleware:
         await self.app(scope, limited_receive, secure_send)
         if too_large and not started:
             await _json(send, 413, "body_too_large", "That request is too large.")
+
+
+# ------------------------------------------------- request id + latency ---
+
+import re as _re  # noqa: E402
+import time as _time  # noqa: E402
+import uuid as _uuid  # noqa: E402
+
+_RID_OK = _re.compile(r"^[A-Za-z0-9._-]{8,64}$")
+
+
+class RequestContextMiddleware:
+    """Gives every request an id (kept from X-Request-ID when well-formed, so a
+    proxy or the frontend can pass one in), returns it as X-Request-ID, puts it
+    on every log line and job, and records request latency for /metrics."""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        from src.config.logging_config import request_id_var
+        from src.services.metrics import HTTP_LATENCY
+
+        incoming = ""
+        for k, v in scope.get("headers", []):
+            if k == b"x-request-id":
+                incoming = v.decode("latin-1")
+                break
+        rid = incoming if _RID_OK.match(incoming) else _uuid.uuid4().hex
+        token = request_id_var.set(rid)
+        status = {"code": 500}
+        start = _time.perf_counter()
+
+        async def send_with_id(message):
+            if message["type"] == "http.response.start":
+                status["code"] = message["status"]
+                message["headers"] = [h for h in message.get("headers", []) if h[0].lower() != b"x-request-id"]
+                message["headers"].append((b"x-request-id", rid.encode()))
+            await send(message)
+
+        try:
+            await self.app(scope, receive, send_with_id)
+        finally:
+            route = getattr(scope.get("route"), "path", None) or "unmatched"  # template, not raw ids
+            HTTP_LATENCY.labels(scope.get("method", "GET"), route, str(status["code"])).observe(_time.perf_counter() - start)
+            request_id_var.reset(token)

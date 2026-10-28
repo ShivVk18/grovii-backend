@@ -32,6 +32,8 @@ USER_MESSAGES = {
     "queue_unavailable": "Generation couldn't start because our servers are busy. Please try again in a minute." + REFUNDED,
     "user_fault": "The AI provider declined this idea. Please rephrase it and try again.",
     "cancelled": "Generation was cancelled." + REFUNDED,
+    "provider_down": "Our AI provider is having trouble right now, so we couldn't create your shoot plan."
+                     " Please try again in a few minutes." + REFUNDED,
     "script_missing": "Your scenes are ready, but the voiceover script couldn't be written. "
                       "You can shoot from the scenes or generate again." + REFUNDED,
 }

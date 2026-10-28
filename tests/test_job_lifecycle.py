@@ -175,7 +175,8 @@ def test_success_completes_job_and_storyboard_without_refund(db, user):
 
 def test_missing_scenes_fail_closed_and_refund(db, user):
     uid, sb_id, job_id = _reserve(db, user)
-    err, _ = _run(sb_id, job_id, updates=_with(director={"scenes": [], "scene_error": "timeout"}))
+    # A non-provider failure (provider outages get their own message, see test_ops).
+    err, _ = _run(sb_id, job_id, updates=_with(director={"scenes": [], "scene_error": "OutputParserException"}))
     assert err is None  # final attempt: handled, not re-raised
     assert _get(db, Storyboard, sb_id).status == "failed"
     assert "scene" in _get(db, Storyboard, sb_id).status_reason.lower()

@@ -11,6 +11,7 @@ from src.api.errors import AppError
 from src.config import jobs as job_config
 from src.config import limits
 from src.config.log_safety import safe_error
+from src.config.logging_config import request_id_var
 from src.models.jobs import Job, JobStatus
 from src.models.storyboard import Storyboard
 from src.models.users import User
@@ -200,6 +201,7 @@ def create_ai_storyboard(db, payload, user_id, background_tasks=None):
                 job_timeout=job_config.JOB_TIMEOUT_SECONDS,
                 retry=Retry(max=job_config.JOB_MAX_RETRIES, interval=job_config.JOB_RETRY_INTERVALS),
                 failure_ttl=7 * 24 * 3600,
+                meta={"request_id": request_id_var.get()},  # traced into the worker's logs
             )
         except Exception as e:  # noqa: BLE001 - Redis down or misconfigured
             logger.error("Could not enqueue job %s: %s", job.id, safe_error(e))

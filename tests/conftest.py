@@ -55,6 +55,16 @@ from src.models.users import User  # noqa: E402
 def _schema():
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
+    # The schema matches the models, i.e. the migration head; record that the
+    # way `alembic upgrade head` would, for the /ready migration check.
+    from sqlalchemy import text as _text
+
+    from src.api.ops import head_revision
+
+    with engine.begin() as conn:
+        conn.execute(_text("DROP TABLE IF EXISTS alembic_version"))
+        conn.execute(_text("CREATE TABLE alembic_version (version_num VARCHAR(32) PRIMARY KEY)"))
+        conn.execute(_text("INSERT INTO alembic_version VALUES (:v)"), {"v": head_revision()})
     yield
     Base.metadata.drop_all(bind=engine)
 

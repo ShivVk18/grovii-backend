@@ -3,11 +3,14 @@ import os
 os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
 
 import logging
+import re
+import time
 
 from rq import get_current_job
 
 from src.ai.quality import language_problems
 from src.config.log_safety import safe_error
+from src.config.logging_config import job_id_var, request_id_var
 from src.database import SessionLocal
 from src.models.jobs import Job, JobStatus
 from src.repositories.job_repository import get_job, update_progress
@@ -32,6 +35,24 @@ OPTIONAL_PARTS = {
 
 class CriticalOutputMissing(RuntimeError):
     """A node the storyboard cannot work without produced nothing."""
+
+
+# Nodes catch their own errors, so a provider outage reaches us as text such as
+# "ServerError: 503 UNAVAILABLE" inside a missing-scenes error.
+_PROVIDER_TROUBLE = re.compile(
+    r"\b(429|500|502|503|504)\b|unavailable|overloaded|resourceexhausted|resource_exhausted|quota|"
+    r"deadlineexceeded|timed? ?out|timeout|connecterror|connection (refused|reset|error)|internalservererror|"
+    r"serviceunavailable|servererror",
+    re.IGNORECASE,
+)
+
+
+def looks_like_provider_outage(text: str) -> bool:
+    return bool(_PROVIDER_TROUBLE.search(text or ""))
+
+
+# Steps that run one after another; the others run in parallel after "script".
+_SEQUENTIAL = ("hook", "director", "script", "collector")
 
 
 def _retries_left() -> int:
@@ -62,6 +83,14 @@ def generate_storyboard_job(payload, storyboard_id, job_id):
     db = SessionLocal()
     usage_scope = metered()
     meter = usage_scope.__enter__()
+    # Carry the API request id into this job's log lines (see storyboard_service).
+    rq_job = get_current_job()
+    rid_token = request_id_var.set((getattr(rq_job, "meta", None) or {}).get("request_id"))
+    jid_token = job_id_var.set(job_id)
+    started = time.perf_counter()
+    stage_start = last_finish = started
+    node_ms: dict[str, int] = {}
+    ran = False
     try:
         job = get_job(db, job_id)
         if job is None:
@@ -72,12 +101,21 @@ def generate_storyboard_job(payload, storyboard_id, job_id):
             return None
 
         transition(db, job_id, JobStatus.RUNNING)
+        ran = True
 
         from src.ai.graph import graph
 
         final_state = dict(payload)
         for update in graph.stream(payload, stream_mode="updates"):
             for node_name, node_output in update.items():
+                now = time.perf_counter()
+                # Sequential steps: time since the previous step finished.
+                # Parallel steps: time since they all started (end of "script").
+                begin = last_finish if node_name in _SEQUENTIAL else stage_start
+                node_ms[node_name] = int((now - begin) * 1000)
+                last_finish = now
+                if node_name in _SEQUENTIAL:
+                    stage_start = now
                 if isinstance(node_output, dict):
                     final_state.update(node_output)
                 if node_name in PROGRESS:
@@ -133,8 +171,12 @@ def generate_storyboard_job(payload, storyboard_id, job_id):
             logger.warning("Job %s attempt failed (%s: %s); RQ will retry", job_id, kind, safe_error(e))
             transition(db, job_id, JobStatus.QUEUED, internal_error=f"retrying after {kind}: {e}")
             raise
-        key = "scenes_missing" if isinstance(e, CriticalOutputMissing) else (
-            "timeout" if "timeout" in kind.lower() else "failed")
+        if looks_like_provider_outage(f"{kind}: {e}"):
+            key = "provider_down"
+        elif isinstance(e, CriticalOutputMissing):
+            key = "scenes_missing"
+        else:
+            key = "timeout" if "timeout" in kind.lower() else "failed"
         logger.error("Job %s failed on its last attempt (%s: %s)", job_id, kind, safe_error(e))
         transition(db, job_id, JobStatus.FAILED, reason=USER_MESSAGES[key],
                    internal_error=f"{kind}: {e}", refund=True)
@@ -147,7 +189,33 @@ def generate_storyboard_job(payload, storyboard_id, job_id):
             record_job_usage(db, job_id, meter)
         except Exception as usage_error:  # noqa: BLE001
             logger.error("Could not record LLM usage for job %s: %s", job_id, usage_error)
+        if ran:
+            _log_summary(db, job_id, started, node_ms, meter)
         db.close()
+        request_id_var.reset(rid_token)
+        job_id_var.reset(jid_token)
+
+
+def _log_summary(db, job_id: str, started: float, node_ms: dict[str, int], meter) -> None:
+    """One structured line per attempt: what dashboards and alerts read."""
+    try:
+        db.rollback()
+        job = db.get(Job, job_id)
+        if job is not None:
+            job.node_timings = node_ms
+            db.commit()
+        status = job.status.value if job is not None else "deleted"
+        logger.info(
+            "Job %s finished: %s", job_id, status,
+            extra={
+                "event": "job_finished", "status": status,
+                "duration_ms": int((time.perf_counter() - started) * 1000), "node_ms": node_ms,
+                "tokens": meter.total_tokens, "llm_calls": meter.calls, "cost_usd": round(meter.cost_usd, 6),
+            },
+        )
+    except Exception as e:  # noqa: BLE001 - logging must never break a job
+        db.rollback()
+        logger.warning("Could not write job summary for %s: %s", job_id, type(e).__name__)
 
 
 __all__ = ["generate_storyboard_job", "Job"]
