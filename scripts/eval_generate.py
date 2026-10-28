@@ -35,7 +35,7 @@ from src.Schemas.storyboard_schema import (  # noqa: E402
 from src.services.jobs_services import generate_storyboard_job  # noqa: E402
 from src.services.storyboard_service import _job_state, reserve_generation  # noqa: E402
 
-EVAL_DATA = os.path.join(os.path.dirname(__file__), "..", "..", "eval", "data")
+EVAL_DATA = os.environ.get("EVAL_DATA") or os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "eval", "data")
 # Eval inputs with free-text values the Phase B validation does not accept.
 VALUE_MAP = {"Emotional but authentic": "emotional"}
 FIELDS = ("idea", "goal", "tone", "style", "audience", "duration", "platform", "language")
@@ -134,6 +134,8 @@ def main():
     out_dir = os.path.join(args.out, "eval", "data")
     os.makedirs(out_dir, exist_ok=True)
     cases = [c for c in load_cases() if not args.cases or c[0] in args.cases.split(",")]
+    if not cases:
+        sys.exit(f"No eval inputs found in {EVAL_DATA} (set EVAL_DATA)")
 
     tasks = [(cid, payload, r) for cid, payload in cases for r in range(1, args.runs + 1)]
     with cf.ThreadPoolExecutor(max_workers=args.parallel) as pool:
