@@ -242,3 +242,22 @@ def test_under_the_ceiling_generation_proceeds(client, auth_headers, db, user, m
     monkeypatch.setattr(limits, "DAILY_SPEND_LIMIT_USD", 20.0)
     _spent_today(db, user, 1.00)
     assert client.post("/storyboards/generate", json=VALID_STORYBOARD, headers=auth_headers).status_code == 200
+
+
+def test_usage_accumulates_across_retry_attempts(db, user):
+    """Each RQ attempt records its own usage; retries must add, not overwrite."""
+    from src.services.llm_usage import UsageMeter
+    from src.services.spend_service import record_job_usage
+
+    _, job_id = _job(db, user)
+    for _ in range(3):  # 3 attempts
+        m = UsageMeter(budget=10**6)
+        m.add("hook", PROMPT_TOKENS, COMPLETION_TOKENS)
+        record_job_usage(db, job_id, m)
+
+    db.expire_all()
+    job = db.get(Job, job_id)
+    assert job.llm_calls == 3
+    assert job.prompt_tokens == 3 * PROMPT_TOKENS
+    assert job.completion_tokens == 3 * COMPLETION_TOKENS
+    assert float(job.cost_usd) == pytest.approx(limits.estimate_cost_usd(3 * PROMPT_TOKENS, 3 * COMPLETION_TOKENS), abs=1e-6)
