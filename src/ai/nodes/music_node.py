@@ -7,6 +7,7 @@ from src.ai.prompts.music_prompt import music_suggestion_prompt
 from src.ai.quality import label_music
 from src.Schemas.music import MusicSuggestionOutput
 from src.services.openai_service import openai_service
+from src.config.log_safety import safe_error
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +57,7 @@ def music_node(state):
             "trending_youtube_shorts_audio": response.get("trending_youtube_shorts_audio", [])
         }
     except Exception as e:
-        logger.error(f"Music node error: {e}")
+        logger.error("Music node error: %s", safe_error(e))
         updates = {
             "scene_music": [],
             "trending_instagram_audio": [],

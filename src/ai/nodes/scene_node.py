@@ -18,6 +18,7 @@ from src.ai.timeline import (
     timeline_problems,
 )
 from src.services.openai_service import openai_service
+from src.config.log_safety import safe_error
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +107,7 @@ def scene_node(state):
                 if retry_scenes and not _content_problems(retry_scenes):
                     data, scenes = retry_data, retry_scenes
             except Exception as e:  # noqa: BLE001 - fall back to rescaling the first answer
-                logger.warning("Stage: Scenes - retry failed (%s); rescaling first answer", e)
+                logger.warning("Stage: Scenes - retry failed (%s); rescaling first answer", safe_error(e))
             adjusted = bool(timeline_problems(scenes, duration))
         if not scenes:
             raise ValueError("model returned no scenes")
@@ -115,5 +116,5 @@ def scene_node(state):
         return {"scenes": scenes, "timeline_adjusted": adjusted,
                 "brief_choice": (data.get("chosen_example") or None)}
     except Exception as e:  # noqa: BLE001 - the job fails closed on empty scenes
-        logger.error("Stage: Scenes - failed: %s", e)
-        return {"scenes": [], "scene_error": str(e)}
+        logger.error("Stage: Scenes - failed: %s", safe_error(e))
+        return {"scenes": [], "scene_error": safe_error(e)}

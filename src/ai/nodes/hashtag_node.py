@@ -6,6 +6,7 @@ from src.ai.inputs import common_inputs
 from src.ai.prompts.hashtag_prompt import hashtag_prompt
 from src.ai.quality import clean_hashtags
 from src.services.openai_service import openai_service
+from src.config.log_safety import safe_error
 
 logger = logging.getLogger(__name__)
 
@@ -49,9 +50,9 @@ def hashtag_node(state):
 
     except Exception as e:
         logger.error(
-            f"Hashtag generation failed {e}"
+            "Hashtag generation failed: %s", safe_error(e)
         )
         updates["hashtags"] = []
-        updates["hashtag_error"] = str(e)
+        updates["hashtag_error"] = safe_error(e)
 
     return update_state(state, updates)

@@ -13,6 +13,9 @@ from src.services.queue_service import storyboard_queue  # noqa: E402
 from src.services.redis_service import redis_client  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+from src.config.log_safety import install_redaction  # noqa: E402
+
+install_redaction()
 logger = logging.getLogger("grovii.worker")
 
 # Same Queue object (and name) the API enqueues to: src/config/jobs.py.

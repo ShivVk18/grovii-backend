@@ -15,6 +15,7 @@ from src.services.credits_service import is_user_fault
 from src.services.job_lifecycle import USER_MESSAGES, transition
 from src.services.llm_usage import BudgetExceeded, metered
 from src.services.spend_service import record_job_usage
+from src.config.log_safety import safe_error
 
 logger = logging.getLogger("grovii.jobs_services")
 
@@ -117,24 +118,24 @@ def generate_storyboard_job(payload, storyboard_id, job_id):
 
     except BudgetExceeded as e:
         # Not retried: a retry would hit the same budget.
-        logger.error("Job %s stopped: %s", job_id, e)
+        logger.error("Job %s stopped: %s", job_id, safe_error(e))
         transition(db, job_id, JobStatus.FAILED, reason=USER_MESSAGES["budget"],
                    internal_error=f"token budget: {e}", refund=True)
         return None
     except Exception as e:  # noqa: BLE001 - every failure must end in a clear state
         kind = type(e).__name__
         if is_user_fault(e):
-            logger.warning("Job %s refused by provider (user content): %s", job_id, e)
+            logger.warning("Job %s refused by provider (user content): %s", job_id, safe_error(e))
             transition(db, job_id, JobStatus.FAILED, reason=USER_MESSAGES["user_fault"],
                        internal_error=f"{kind}: {e}", refund=False)
             return None
         if _retries_left() > 0:
-            logger.warning("Job %s attempt failed (%s: %s); RQ will retry", job_id, kind, e)
+            logger.warning("Job %s attempt failed (%s: %s); RQ will retry", job_id, kind, safe_error(e))
             transition(db, job_id, JobStatus.QUEUED, internal_error=f"retrying after {kind}: {e}")
             raise
         key = "scenes_missing" if isinstance(e, CriticalOutputMissing) else (
             "timeout" if "timeout" in kind.lower() else "failed")
-        logger.error("Job %s failed on its last attempt (%s: %s)", job_id, kind, e)
+        logger.error("Job %s failed on its last attempt (%s: %s)", job_id, kind, safe_error(e))
         transition(db, job_id, JobStatus.FAILED, reason=USER_MESSAGES[key],
                    internal_error=f"{kind}: {e}", refund=True)
         if isinstance(e, CriticalOutputMissing):

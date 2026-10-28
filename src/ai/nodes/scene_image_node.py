@@ -1,4 +1,5 @@
 from src.services.image_generation_service import ImageGenerationService
+from src.config.log_safety import safe_error
 
 async def scene_image_node(state):
     scenes = state.get("scenes", [])
@@ -13,7 +14,7 @@ async def scene_image_node(state):
             scene["scene_image_url"] = image_url
             scene["image_status"] = "completed"
         except Exception as e:
-            print(f"Error generating image for scene {i+1}: {e}")
+            print(f"Error generating image for scene {i+1}: {safe_error(e)}")
             scene["scene_image_url"] = None
             scene["image_status"] = "failed"
             

@@ -5,6 +5,7 @@ from langchain_core.output_parsers import JsonOutputParser
 from src.ai.inputs import common_inputs
 from src.ai.prompts.caption_prompts import caption_prompt
 from src.services.openai_service import openai_service
+from src.config.log_safety import safe_error
 
 logger = logging.getLogger(__name__)
 
@@ -63,10 +64,10 @@ def caption_node(state):
 
     except Exception as e:
         logger.error(
-            f"Caption generation failed: {e}"
+            "Caption generation failed: %s", safe_error(e)
         )
         updates["captions"] = []
-        updates["caption_error"] = str(e)
+        updates["caption_error"] = safe_error(e)
 
     return update_state(state, updates)
 

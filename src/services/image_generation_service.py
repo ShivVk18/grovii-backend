@@ -59,8 +59,6 @@ class ImageGenerationService:
         folder="/grovii/scenes"
       )
 
-      print(response)
-
       return response.url
 
     @staticmethod

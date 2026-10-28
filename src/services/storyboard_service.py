@@ -36,6 +36,7 @@ from src.services.job_lifecycle import USER_MESSAGES, transition
 from src.services.jobs_services import generate_storyboard_job
 from src.services.queue_service import storyboard_queue
 from src.services.spend_service import ensure_daily_budget_available
+from src.config.log_safety import safe_error
 
 logger = logging.getLogger("grovii.storyboards")
 
@@ -201,7 +202,7 @@ def create_ai_storyboard(db, payload, user_id, background_tasks=None):
                 failure_ttl=7 * 24 * 3600,
             )
         except Exception as e:  # noqa: BLE001 - Redis down or misconfigured
-            logger.error("Could not enqueue job %s: %s", job.id, e)
+            logger.error("Could not enqueue job %s: %s", job.id, safe_error(e))
             transition(db, job.id, JobStatus.FAILED, reason=USER_MESSAGES["queue_unavailable"],
                        internal_error=f"enqueue failed: {type(e).__name__}: {e}", refund=True)
             raise AppError(503, "queue_unavailable", USER_MESSAGES["queue_unavailable"],

@@ -6,6 +6,7 @@ from src.ai.inputs import common_inputs
 from src.ai.prompts.hook_prompts import hook_prompt
 from src.ai.quality import pick_best_hook
 from src.services.openai_service import openai_service
+from src.config.log_safety import safe_error
 
 logger = logging.getLogger(__name__)
 
@@ -23,5 +24,5 @@ def hook_node(state):
         logger.info("Stage: Hook - chose %r from %d candidates", hook, len(candidates))
         return {"hook": hook, "regenerated_hooks": candidates}
     except Exception as e:  # noqa: BLE001 - the job decides how to handle a missing hook
-        logger.error("Stage: Hook - failed: %s", e)
-        return {"hook": "", "hook_error": str(e)}
+        logger.error("Stage: Hook - failed: %s", safe_error(e))
+        return {"hook": "", "hook_error": safe_error(e)}
