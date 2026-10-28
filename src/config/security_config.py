@@ -16,7 +16,7 @@ from datetime import datetime, timedelta, timezone
 
 import bcrypt
 from dotenv import load_dotenv
-from jose import jwt
+import jwt  # PyJWT (python-jose has unfixed advisories, Phase F audit)
 
 load_dotenv()
 
@@ -153,10 +153,10 @@ def verify_password_or_dummy(plain_password: str, hashed_password: str | None) -
 
 
 def decode_access_token(token: str) -> dict:
-    """Verify signature, algorithm, expiry and subject. Raises jose.JWTError if invalid."""
+    """Verify signature, algorithm, expiry and subject. Raises jwt.PyJWTError if invalid."""
     return jwt.decode(
         token,
         JWT_SECRET_KEY,
         algorithms=[ALGORITHM],
-        options={"require_exp": True, "require_sub": True},
+        options={"require": ["exp", "sub"]},
     )

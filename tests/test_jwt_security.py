@@ -8,7 +8,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
-from jose import jwt
+import jwt
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 OLD_HARDCODED_SECRET = "shivansh"  # the leaked value from the eval report
@@ -155,7 +155,7 @@ def test_issued_token_has_exp_and_iat_matching_config(client, user_id):
     from src.config.security_config import ACCESS_TOKEN_EXPIRE_MINUTES
 
     r = client.post("/auth/login", json={"email": "jwt@example.com", "password": TEST_PASSWORD})
-    claims = jwt.get_unverified_claims(r.cookies["grovii_session"])
+    claims = jwt.decode(r.cookies["grovii_session"], options={"verify_signature": False})
     assert claims.get("sid"), "token must name a server-side session"
     assert claims["sub"] == user_id
     assert "iat" in claims and "exp" in claims
