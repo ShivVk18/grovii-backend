@@ -115,7 +115,8 @@ def _readiness() -> dict:
 
 @router.get("/health")
 def health():
-    return {"status": "ok"}
+    # `release` lets a deploy pipeline confirm which version is live.
+    return {"status": "ok", "release": ops_settings.RELEASE}
 
 
 @router.get("/ready")

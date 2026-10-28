@@ -206,7 +206,7 @@ def _log_summary(db, job_id: str, started: float, node_ms: dict[str, int], meter
             db.commit()
         status = job.status.value if job is not None else "deleted"
         logger.info(
-            "Job %s finished: %s", job_id, status,
+            "Job %s attempt ended: %s", job_id, status,
             extra={
                 "event": "job_finished", "status": status,
                 "duration_ms": int((time.perf_counter() - started) * 1000), "node_ms": node_ms,
