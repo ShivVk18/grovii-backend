@@ -1,5 +1,6 @@
-from src.services.image_generation_service import ImageGenerationService
 from src.config.log_safety import safe_error
+from src.services.image_generation_service import ImageGenerationService
+
 
 async def scene_image_node(state):
     scenes = state.get("scenes", [])

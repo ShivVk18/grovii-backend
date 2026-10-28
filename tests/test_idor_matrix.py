@@ -12,7 +12,7 @@ from fastapi.testclient import TestClient
 from src.models.jobs import Job, JobStatus
 from src.models.scenes import Scene
 from src.models.storyboard import Storyboard
-from tests.conftest import STRONG_PASSWORD, VALID_STORYBOARD
+from tests.conftest import STRONG_PASSWORD
 
 PUBLIC = {
     ("GET", "/"),

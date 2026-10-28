@@ -7,8 +7,8 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-import pytest
 import jwt
+import pytest
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 OLD_HARDCODED_SECRET = "shivansh"  # the leaked value from the eval report

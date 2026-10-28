@@ -2,6 +2,7 @@
 import hashlib
 import logging
 from datetime import datetime, timedelta
+from typing import cast
 
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
@@ -51,9 +52,9 @@ def _failures_key(email: str) -> str:
 def _check_not_locked(email: str) -> None:
     try:
         key = _failures_key(email)
-        count = int(redis_client.get(key) or 0)
+        count = int(cast(str, redis_client.get(key)) or 0)
         if count >= settings.LOGIN_MAX_FAILURES:
-            ttl = int(redis_client.ttl(key))
+            ttl = int(cast(int, redis_client.ttl(key)))
             retry = ttl if ttl > 0 else settings.LOGIN_LOCK_SECONDS
             raise AppError(
                 429, "login_locked",
@@ -105,7 +106,8 @@ def start_session(db: Session, user: User) -> tuple[str, str, int]:
     session = UserSession(user_id=user.id, expires_at=datetime.utcnow() + timedelta(seconds=max_age))
     db.add(session)
     db.commit()
-    return create_access_token(str(user.id), session.id), csrf_token_for(session.id), max_age
+    sid = str(session.id)
+    return create_access_token(str(user.id), sid), csrf_token_for(sid), max_age
 
 
 def revoke_session(db: Session, session_id: str) -> None:
@@ -129,16 +131,16 @@ def login_user(db: Session, email: str, password: str) -> str:
 
 
 def change_password(db: Session, user_id: str, keep_session_id: str, current: str, new: str) -> None:
-    from src.Schemas.auth_schema import password_problem
     from src.config.security_config import verify_password
+    from src.Schemas.auth_schema import password_problem
 
     user = db.get(User, user_id)
-    if not user or not verify_password(current, user.hashed_password):
+    if not user or not verify_password(current, str(user.hashed_password)):
         raise AppError(403, "wrong_password", "Your current password is wrong.")
-    problem = password_problem(new, email=user.email, username=user.username)
+    problem = password_problem(new, email=str(user.email), username=str(user.username))
     if problem:
         raise AppError(422, "validation_error", problem, errors={"new_password": problem})
-    user.hashed_password = hash_password(new)
+    user.hashed_password = hash_password(new)  # type: ignore[assignment]  # legacy Column model (BACKLOG #24)
     # Sign out every other device: whoever knew the old password loses access.
     db.query(UserSession).filter(UserSession.user_id == user_id, UserSession.id != keep_session_id,
                                  UserSession.revoked_at.is_(None)).update(
@@ -150,7 +152,9 @@ def update_username(db: Session, user_id: str, username: str) -> User:
     if db.query(User.id).filter(User.username == username, User.id != user_id).first():
         raise AppError(409, "username_taken", "That username is taken. Try another.")
     user = db.get(User, user_id)
-    user.username = username
+    if user is None:
+        raise AppError(404, "not_found", "Account not found.")
+    user.username = username  # type: ignore[assignment]  # legacy Column model (BACKLOG #24)
     try:
         db.commit()
     except IntegrityError:

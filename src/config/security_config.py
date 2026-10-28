@@ -15,8 +15,8 @@ import os
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
-from dotenv import load_dotenv
 import jwt  # PyJWT (python-jose has unfixed advisories, Phase F audit)
+from dotenv import load_dotenv
 
 load_dotenv()
 

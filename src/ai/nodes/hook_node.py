@@ -5,8 +5,8 @@ from langchain_core.output_parsers import JsonOutputParser
 from src.ai.inputs import common_inputs
 from src.ai.prompts.hook_prompts import hook_prompt
 from src.ai.quality import pick_best_hook
-from src.services.openai_service import openai_service
 from src.config.log_safety import safe_error
+from src.services.openai_service import openai_service
 
 logger = logging.getLogger(__name__)
 

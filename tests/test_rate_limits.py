@@ -6,9 +6,8 @@ from unittest.mock import patch
 import pytest
 from redis.exceptions import ConnectionError as RedisConnectionError
 
-from src.config import limits
+from src.config import limits, security_settings
 from src.models.users import User
-from src.config import security_settings
 from tests.conftest import VALID_STORYBOARD, login_token
 
 TEST_PASSWORD = "pw-123456789"  # gitleaks:allow  (test-only password, not a secret)

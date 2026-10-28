@@ -1,10 +1,9 @@
 import uuid
 
-from sqlalchemy import Column, String, Text, Integer, ForeignKey, DateTime,JSON
-from sqlalchemy.orm import relationship
-from datetime import datetime
-
+from sqlalchemy import JSON, Column, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.orm import relationship
+
 from src.database import Base
 
 

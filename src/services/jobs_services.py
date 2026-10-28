@@ -6,16 +6,16 @@ import logging
 
 from rq import get_current_job
 
+from src.ai.quality import language_problems
+from src.config.log_safety import safe_error
 from src.database import SessionLocal
 from src.models.jobs import Job, JobStatus
 from src.repositories.job_repository import get_job, update_progress
 from src.repositories.storyboard_repository import save_graph_result
-from src.ai.quality import language_problems
 from src.services.credits_service import is_user_fault
 from src.services.job_lifecycle import USER_MESSAGES, transition
 from src.services.llm_usage import BudgetExceeded, metered
 from src.services.spend_service import record_job_usage
-from src.config.log_safety import safe_error
 
 logger = logging.getLogger("grovii.jobs_services")
 

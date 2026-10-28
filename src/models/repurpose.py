@@ -1,9 +1,9 @@
 import uuid
 
-from sqlalchemy import Column, String,  ForeignKey,Text
+from sqlalchemy import Column, ForeignKey, String, Text
 
+from src.database import Base
 
-from src.database import Base 
 
 class RepurposeContent(Base):
 

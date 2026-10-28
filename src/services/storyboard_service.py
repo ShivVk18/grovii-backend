@@ -10,6 +10,7 @@ from src.ai.graph import graph
 from src.api.errors import AppError
 from src.config import jobs as job_config
 from src.config import limits
+from src.config.log_safety import safe_error
 from src.models.jobs import Job, JobStatus
 from src.models.storyboard import Storyboard
 from src.models.users import User
@@ -36,7 +37,6 @@ from src.services.job_lifecycle import USER_MESSAGES, transition
 from src.services.jobs_services import generate_storyboard_job
 from src.services.queue_service import storyboard_queue
 from src.services.spend_service import ensure_daily_budget_available
-from src.config.log_safety import safe_error
 
 logger = logging.getLogger("grovii.storyboards")
 

@@ -1,8 +1,9 @@
 import uuid
 
-from sqlalchemy import Column, String, Text, Integer, ForeignKey,Boolean
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, Text
 
 from src.database import Base
+
 
 class Hook(Base):
 

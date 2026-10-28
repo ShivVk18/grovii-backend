@@ -17,8 +17,8 @@ from src.ai.timeline import (
     seconds_of,
     timeline_problems,
 )
-from src.services.openai_service import openai_service
 from src.config.log_safety import safe_error
+from src.services.openai_service import openai_service
 
 logger = logging.getLogger(__name__)
 

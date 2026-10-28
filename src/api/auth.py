@@ -23,11 +23,13 @@ router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
 def _set_session_cookies(response: Response, token: str, csrf: str, max_age: int) -> None:
-    common = {"max_age": max_age, "path": "/", "secure": settings.cookie_secure(), "samesite": "lax"}
+    secure = settings.cookie_secure()
     # The session itself: never readable by page scripts.
-    response.set_cookie(settings.cookie_name(settings.SESSION_COOKIE), token, httponly=True, **common)
+    response.set_cookie(settings.cookie_name(settings.SESSION_COOKIE), token, max_age=max_age, path="/",
+                        secure=secure, httponly=True, samesite="lax")
     # The CSRF token: the frontend reads it and echoes it in X-CSRF-Token.
-    response.set_cookie(settings.cookie_name(settings.CSRF_COOKIE), csrf, httponly=False, **common)
+    response.set_cookie(settings.cookie_name(settings.CSRF_COOKIE), csrf, max_age=max_age, path="/",
+                        secure=secure, httponly=False, samesite="lax")
 
 
 def _clear_session_cookies(response: Response) -> None:

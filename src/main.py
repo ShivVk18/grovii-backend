@@ -1,24 +1,22 @@
 import os
+
 os.environ["OBJC_DISABLE_INITIALIZE_FORK_SAFETY"] = "YES"
+
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
-
-from src.database import Base, engine
+from sqlalchemy import text
 
 # Import all models so they're registered with Base.metadata
 import src.models  # noqa: F401
-
+from src.api.auth import router as auth_router
 from src.api.errors import register_error_handlers
 from src.api.middleware import SecurityMiddleware
+from src.api.storyboard import router as storyboard_router
 from src.config import security_settings
 from src.config.log_safety import install_redaction
-from src.api.auth import router as auth_router
-from src.api.storyboard import router as storyboard_router
-
-
-from sqlalchemy import text
+from src.database import Base, engine
 
 
 @asynccontextmanager

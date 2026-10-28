@@ -12,7 +12,7 @@ from src.models.scenes import Scene
 from src.models.storyboard import Storyboard
 from src.models.users import User
 from src.Schemas.storyboard_schema import CreateStoryboardRequest
-from tests.conftest import STRONG_PASSWORD, login_token, VALID_STORYBOARD
+from tests.conftest import STRONG_PASSWORD, VALID_STORYBOARD, login_token
 
 GOOD_SCENES = [{"title": f"S{i}", "duration": 6, "what_to_show": "Pour coffee",
                 "voiceover_example": f"Line {i}"} for i in range(1, 6)]

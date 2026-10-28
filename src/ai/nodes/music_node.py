@@ -5,9 +5,9 @@ from langchain_core.output_parsers import JsonOutputParser
 from src.ai.inputs import common_inputs
 from src.ai.prompts.music_prompt import music_suggestion_prompt
 from src.ai.quality import label_music
+from src.config.log_safety import safe_error
 from src.Schemas.music import MusicSuggestionOutput
 from src.services.openai_service import openai_service
-from src.config.log_safety import safe_error
 
 logger = logging.getLogger(__name__)
 

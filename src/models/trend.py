@@ -1,9 +1,8 @@
 import uuid
 
-from sqlalchemy import Column, String,  Integer, ForeignKey,Text,JSON
+from sqlalchemy import JSON, Column, ForeignKey, String, Text
 
-
-from src.database import Base 
+from src.database import Base
 
 
 class Trend(Base):

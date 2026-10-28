@@ -254,6 +254,7 @@ def test_logs_never_contain_passwords_or_session_tokens(caplog):
 def test_failed_ai_steps_do_not_log_generated_or_creator_text(caplog):
     """A parser error carries the whole model reply; logs must not copy it."""
     from langchain_core.exceptions import OutputParserException
+
     from src.ai.nodes import music_node
 
     marker = "CREATOR-PRIVATE-PHONE-555-0199"
