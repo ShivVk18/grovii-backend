@@ -35,6 +35,8 @@ os.environ["DATABASE_URL"] = _test_database_url()
 os.environ["JWT_SECRET_KEY"] = secrets.token_urlsafe(64)
 # A fake key so any LLM call that a test forgot to mock fails instead of costing money.
 os.environ["OPENAI_API_KEY"] = "sk-test-not-a-real-key"
+os.environ["GEMINI_API_KEY"] = "test-not-a-real-gemini-key"
+os.environ.pop("GOOGLE_API_KEY", None)
 # A separate Redis database (wiped before each test). The app and a developer's
 # worker use db 0; tests must never touch it.
 os.environ["REDIS_URL"] = os.environ.get("TEST_REDIS_URL", "redis://localhost:6379/15")

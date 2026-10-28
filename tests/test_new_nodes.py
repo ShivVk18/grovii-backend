@@ -29,7 +29,7 @@ def base_state():
         "repurposed_content": {}
     }
 
-@patch('langchain_openai.ChatOpenAI.invoke')
+@patch('langchain_google_genai.ChatGoogleGenerativeAI.invoke')
 def test_hook_regenerator_node(mock_invoke, base_state):
     mock_invoke.return_value = AIMessage(content='{"regenerated_hooks": [{"hook": "New hook", "type": "Curiosity", "score": 90}]}')
     
@@ -37,14 +37,14 @@ def test_hook_regenerator_node(mock_invoke, base_state):
     assert len(new_state["regenerated_hooks"]) == 1
     assert new_state["regenerated_hooks"][0]["hook"] == "New hook"
 
-@patch('langchain_openai.ChatOpenAI.invoke')
+@patch('langchain_google_genai.ChatGoogleGenerativeAI.invoke')
 def test_trend_node(mock_invoke, base_state):
     mock_invoke.return_value = AIMessage(content='{"hooks": ["Trend hook"], "sounds": ["Trend sound"], "transitions": ["Trend transition"], "best_duration": "15s", "posting_time": "10 AM", "editing_style": "Fast", "content_gaps": []}')
     
     new_state = trend_node(base_state)
     assert new_state["trends"]["posting_time"] == "10 AM"
 
-@patch('langchain_openai.ChatOpenAI.invoke')
+@patch('langchain_google_genai.ChatGoogleGenerativeAI.invoke')
 def test_music_node(mock_invoke, base_state):
     mock_invoke.return_value = AIMessage(content='{"scene_music": [{"scene": 1, "genre": "Pop", "bpm": 120, "mood": "Happy", "transition": "Fade"}]}')
     
@@ -52,7 +52,7 @@ def test_music_node(mock_invoke, base_state):
     assert len(new_state["scene_music"]) == 1
     assert new_state["scene_music"][0]["genre"] == "Pop"
 
-@patch('langchain_openai.ChatOpenAI.invoke')
+@patch('langchain_google_genai.ChatGoogleGenerativeAI.invoke')
 def test_repurpose_node(mock_invoke, base_state):
     mock_invoke.return_value = AIMessage(content='{"linkedin": "LinkedIn Post", "twitter_thread": "Twitter Thread", "carousel": "Carousel Text", "blog": "Blog Post", "newsletter": "Newsletter"}')
     

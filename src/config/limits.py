@@ -46,7 +46,7 @@ RATE_REGISTER_PER_IP = (_int("RATE_REGISTER_PER_IP", 5), 3600)
 RATE_CREATE_PER_USER = (_int("RATE_CREATE_PER_USER", 30), 60)
 
 # -------------------------------------------------------------------- LLM ----
-LLM_MODEL = os.getenv("LLM_MODEL", "gpt-4o")
+LLM_MODEL = os.getenv("LLM_MODEL", "gemini-2.5-flash")
 # Optional: route LLM calls through a proxy or compatible endpoint.
 LLM_BASE_URL = os.getenv("LLM_BASE_URL") or None
 LLM_TIMEOUT_SECONDS = _float("LLM_TIMEOUT_SECONDS", 60.0)
@@ -77,10 +77,11 @@ JOB_TOKEN_BUDGET = _int("JOB_TOKEN_BUDGET", 40_000)
 # generations are refused with 503 and a CRITICAL log line is emitted.
 DAILY_SPEND_LIMIT_USD = _float("DAILY_SPEND_LIMIT_USD", 20.0)
 
-# USD per 1M tokens. Check your provider's current price list; these are the
-# rates used in eval/phase8_performance.md for gpt-4o.
-PRICE_INPUT_PER_M = _float("LLM_PRICE_INPUT_PER_M", 2.50)
-PRICE_OUTPUT_PER_M = _float("LLM_PRICE_OUTPUT_PER_M", 10.00)
+# USD per 1M tokens. Defaults are Google's published gemini-2.5-flash paid-tier
+# rates as known when this was written; CHECK the current price list and set
+# these env vars if you change model or the prices change.
+PRICE_INPUT_PER_M = _float("LLM_PRICE_INPUT_PER_M", 0.30)
+PRICE_OUTPUT_PER_M = _float("LLM_PRICE_OUTPUT_PER_M", 2.50)
 
 
 def estimate_cost_usd(prompt_tokens: int, completion_tokens: int) -> float:

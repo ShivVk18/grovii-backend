@@ -61,11 +61,11 @@ def test_get_llm_sets_timeout_retries_and_per_node_output_cap():
     hook = openai_service.get_llm("hook")
     unknown = openai_service.get_llm("something_new")
 
-    assert director.max_tokens == limits.NODE_MAX_OUTPUT_TOKENS["director"]
-    assert hook.max_tokens == limits.NODE_MAX_OUTPUT_TOKENS["hook"]
-    assert unknown.max_tokens == limits.DEFAULT_MAX_OUTPUT_TOKENS
+    assert director.max_output_tokens == limits.NODE_MAX_OUTPUT_TOKENS["director"]
+    assert hook.max_output_tokens == limits.NODE_MAX_OUTPUT_TOKENS["hook"]
+    assert unknown.max_output_tokens == limits.DEFAULT_MAX_OUTPUT_TOKENS
     for llm in (director, hook, unknown):
-        assert llm.request_timeout == limits.LLM_TIMEOUT_SECONDS
+        assert llm.timeout == limits.LLM_TIMEOUT_SECONDS
         assert llm.max_retries == limits.LLM_MAX_RETRIES
 
 
@@ -97,8 +97,6 @@ class _StallingHandler(BaseHTTPRequestHandler):
 def test_a_hanging_provider_times_out_instead_of_blocking_forever(monkeypatch):
     """Real HTTP: a local server that never answers. The call must fail after
     roughly timeout x (1 + retries), not hang."""
-    from openai import APITimeoutError
-
     from src.services.openai_service import openai_service
 
     server = ThreadingHTTPServer(("127.0.0.1", 0), _StallingHandler)
@@ -108,9 +106,10 @@ def test_a_hanging_provider_times_out_instead_of_blocking_forever(monkeypatch):
     monkeypatch.setattr(limits, "LLM_BASE_URL", f"http://127.0.0.1:{server.server_port}/v1")
     try:
         started = time.monotonic()
-        with pytest.raises(APITimeoutError):
+        with pytest.raises(Exception) as exc:  # provider-specific type (httpx/openai/google)
             openai_service.get_llm("hook").invoke("hello")
         elapsed = time.monotonic() - started
+        assert "timeout" in type(exc.value).__name__.lower() or "timed out" in str(exc.value).lower(), exc.value
     finally:
         server.shutdown()
     assert elapsed < 4, f"took {elapsed:.1f}s"
