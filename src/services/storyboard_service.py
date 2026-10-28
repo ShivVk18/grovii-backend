@@ -199,7 +199,9 @@ def create_ai_storyboard(db, payload, user_id, background_tasks=None):
                 generate_storyboard_job, state, storyboard.id, job.id,
                 job_id=job.id,  # same id in Redis and Postgres: easy to trace, no duplicates
                 job_timeout=job_config.JOB_TIMEOUT_SECONDS,
-                retry=Retry(max=job_config.JOB_MAX_RETRIES, interval=job_config.JOB_RETRY_INTERVALS),
+                # RQ rejects Retry(max=0); no retries means no Retry object.
+                retry=(Retry(max=job_config.JOB_MAX_RETRIES, interval=job_config.JOB_RETRY_INTERVALS)
+                       if job_config.JOB_MAX_RETRIES > 0 else None),
                 failure_ttl=7 * 24 * 3600,
                 meta={"request_id": request_id_var.get()},  # traced into the worker's logs
             )

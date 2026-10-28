@@ -312,3 +312,20 @@ def test_cannot_cancel_running_or_other_users_job(client, auth_headers, db):
 
 
 _ = asyncio  # keep import for future async tests
+
+
+def test_zero_retries_config_still_enqueues(client, auth_headers, monkeypatch):
+    """JOB_MAX_RETRIES=0 (documented in docs/ENV.md) used to make every
+    generation fail with 503: RQ rejects Retry(max=0). Found in the Phase H drill."""
+    from rq import Retry
+
+    from src.config import jobs as job_config
+    from src.services import storyboard_service
+    from tests.conftest import VALID_STORYBOARD
+
+    monkeypatch.setattr(job_config, "JOB_MAX_RETRIES", 0)
+    real_retry = Retry  # the enqueue mock doesn't validate; build the arguments the same way
+    r = client.post("/storyboards/generate", json=VALID_STORYBOARD, headers=auth_headers)
+    assert r.status_code == 200, r.text
+    retry = storyboard_service.storyboard_queue.enqueue.call_args.kwargs.get("retry")
+    assert retry is None or isinstance(retry, real_retry)
