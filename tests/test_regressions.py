@@ -62,7 +62,6 @@ def test_ops01_job_goes_to_redis_when_a_worker_listens_on_the_real_queue(db, use
 
 
 # ---------------------------------------------------------------- API-01 ----
-@pytest.mark.xfail(reason="API-01 /storyboards/jobs shadowed by /{storyboard_id}: fixed in Phase C", strict=True)
 def test_api01_jobs_list_route_is_reachable(client, auth_headers):
     r = client.get("/storyboards/jobs", headers=auth_headers)
     assert r.status_code == 200, f"got {r.status_code}: {r.text}"
