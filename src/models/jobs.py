@@ -46,7 +46,7 @@ class Job(Base):
 
     user_id = Column(
     String,
-    ForeignKey("users.id"),
+    ForeignKey("users.id", ondelete="CASCADE"),
     nullable=False
 )
 
@@ -54,11 +54,7 @@ class Job(Base):
 
     String,
 
-    ForeignKey(
-
-        "storyboards.id"
-
-    ),
+    ForeignKey("storyboards.id", ondelete="CASCADE"),
 
     nullable=False
 

@@ -22,11 +22,7 @@ class Caption(Base):
 
         String,
 
-        ForeignKey(
-
-            "storyboards.id"
-
-        )
+        ForeignKey("storyboards.id", ondelete="CASCADE")
 
     )
 

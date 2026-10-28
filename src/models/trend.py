@@ -24,11 +24,7 @@ class Trend(Base):
 
         String,
 
-        ForeignKey(
-
-            "storyboards.id"
-
-        )
+        ForeignKey("storyboards.id", ondelete="CASCADE")
 
     )
 

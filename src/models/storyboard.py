@@ -21,7 +21,7 @@ class Storyboard(Base):
 
     user_id=Column(
         String,
-        ForeignKey("users.id")
+        ForeignKey("users.id", ondelete="CASCADE")
     )
 
     title=Column(String)
@@ -112,40 +112,47 @@ class Storyboard(Base):
 
     scenes=relationship(
         "Scene",
+        cascade="all, delete-orphan",
         back_populates="storyboard"
     )
 
 
     captions=relationship(
-        "Caption"
+        "Caption",
+        cascade="all, delete-orphan"
     )
 
 
 
     hashtags=relationship(
-        "Hashtag"
+        "Hashtag",
+        cascade="all, delete-orphan"
     )
 
 
     hooks=relationship(
-        "Hook"
+        "Hook",
+        cascade="all, delete-orphan"
     )
 
 
     trends=relationship(
-        "Trend"
+        "Trend",
+        cascade="all, delete-orphan"
     )
 
 
     music=relationship(
-        "MusicSuggestion"
+        "MusicSuggestion",
+        cascade="all, delete-orphan"
     )
 
 
 
     repurpose=relationship(
         "RepurposeContent",
-        uselist=False
+        uselist=False,
+        cascade="all, delete-orphan"
     )
     
     jobs = relationship(

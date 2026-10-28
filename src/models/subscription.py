@@ -16,7 +16,7 @@ class UserSubscription(Base):
     __tablename__ = "user_subscriptions"
 
     id = Column(Integer, primary_key=True)
-    user_id = Column(String, ForeignKey("users.id"))
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"))
     plan_id = Column(Integer, ForeignKey("subscription_plans.id"))
 
     start_date = Column(DateTime(timezone=True), server_default=func.now())

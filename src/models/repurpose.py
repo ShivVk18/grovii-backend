@@ -23,11 +23,7 @@ class RepurposeContent(Base):
 
         String,
 
-        ForeignKey(
-
-            "storyboards.id"
-
-        ),
+        ForeignKey("storyboards.id", ondelete="CASCADE"),
 
         unique=True
 

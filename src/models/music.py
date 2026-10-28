@@ -16,9 +16,7 @@ class MusicSuggestion(Base):
 
     storyboard_id=Column(
         String,
-        ForeignKey(
-            "storyboards.id"
-        )
+        ForeignKey("storyboards.id", ondelete="CASCADE")
     )
 
     scene_number=Column(Integer)
