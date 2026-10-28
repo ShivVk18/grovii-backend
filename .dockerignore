@@ -1,0 +1,22 @@
+# Never ship secrets, local envs, tests or caches in the image.
+.env
+.env.*
+!.env.example
+venv/
+.venv/
+**/__pycache__/
+*.pyc
+.git/
+.github/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+tests/
+test.db
+test.py
+test_api.py
+test_graph.py
+*.log
+deploy/backups/

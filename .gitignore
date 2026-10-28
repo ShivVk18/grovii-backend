@@ -20,3 +20,9 @@ htmlcov/
 
 # OS / editor
 .DS_Store
+
+# deploy
+deploy/staging.env
+deploy/*.env
+!deploy/*.env.example
+deploy/backups/

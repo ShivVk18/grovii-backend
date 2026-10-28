@@ -1,0 +1,108 @@
+# Local "staging" stack: the same images and deploy steps as production.
+# Assumes the two repos are siblings: grovii-backend/ and frontend/.
+#
+#   cd grovii-backend/deploy
+#   cp staging.env.example staging.env   # fill in secrets
+#   docker compose --env-file staging.env up -d --build
+#   (migrate runs first; api/worker start only after it succeeds)
+#
+# Production runs on Render + Vercel (render.yaml); this file is for local
+# staging, rollback drills and hosts without a platform.
+name: grovii
+
+x-backend: &backend
+  image: grovii-backend:${RELEASE:-local}
+  build: { context: .., dockerfile: Dockerfile }
+  env_file: staging.env
+  environment:
+    DATABASE_URL: postgresql://grovii:${POSTGRES_PASSWORD}@postgres:5432/grovii
+    REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+    RELEASE: ${RELEASE:-local}
+  read_only: true
+  tmpfs: [/tmp]
+  security_opt: [no-new-privileges:true]
+  cap_drop: [ALL]
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:18.1-alpine
+    environment:
+      POSTGRES_USER: grovii
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: grovii
+    volumes: [pgdata:/var/lib/postgresql]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U grovii -d grovii"]
+      interval: 5s
+      retries: 20
+    restart: unless-stopped
+
+  redis:
+    image: redis:8.2-alpine
+    command: ["redis-server", "/usr/local/etc/redis/redis.conf", "--requirepass", "${REDIS_PASSWORD}"]
+    # Config is inlined (compose `configs`), so no host file is bind-mounted.
+    # Keep it in sync with deploy/redis.conf (the reference copy).
+    configs:
+      - source: redis_conf
+        target: /usr/local/etc/redis/redis.conf
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" --no-auth-warning ping | grep PONG"]
+      interval: 5s
+      retries: 20
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    restart: unless-stopped
+
+  migrate:
+    <<: *backend
+    command: ["migrate"]
+    restart: "no"
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  api:
+    <<: *backend
+    command: ["api"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    ports: ["127.0.0.1:${API_PORT:-8000}:8000"]
+
+  worker:
+    <<: *backend
+    command: ["worker"]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+
+  frontend:
+    image: grovii-frontend:${RELEASE:-local}
+    build: { context: ../../frontend, dockerfile: Dockerfile }
+    environment:
+      API_PROXY_TARGET: http://api:8000
+      PROXY_SHARED_SECRET: ${PROXY_SHARED_SECRET}
+    read_only: true
+    tmpfs: [/tmp, /app/.next/cache]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    depends_on: [api]
+    ports: ["127.0.0.1:${WEB_PORT:-3000}:3000"]
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
+
+configs:
+  redis_conf:
+    content: |
+      appendonly yes
+      appendfsync everysec
+      save 900 1
+      save 300 100
+      maxmemory 256mb
+      maxmemory-policy noeviction
+      protected-mode yes
