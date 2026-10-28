@@ -9,7 +9,13 @@ from src.config.dependencies_config import get_current_user
 from src.config.security_config import verify_password
 from src.database import get_db
 from src.models.users import User
-from src.Schemas.auth_schema import DeleteAccountRequest, LoginRequest, RegisterRequest
+from src.Schemas.auth_schema import (
+    ChangePasswordRequest,
+    DeleteAccountRequest,
+    LoginRequest,
+    RegisterRequest,
+    UpdateProfileRequest,
+)
 from src.services import account_service, auth_service
 from src.services.rate_limit import limit_login_ip, limit_register_ip
 
@@ -44,16 +50,33 @@ def login(payload: LoginRequest, response: Response, db: Session = Depends(get_d
     return {"message": "Signed in"}
 
 
+def _me(user) -> dict:
+    return {
+        "id": str(user.id),
+        "email": user.email,
+        "username": user.username,
+        "credits": user.credits,
+        "plan": user.plan,
+        "avatar_url": user.avatar_url,
+    }
+
+
 @router.get("/me")
 def me(current_user=Depends(get_current_user)):
-    return {
-        "id": str(current_user.id),
-        "email": current_user.email,
-        "username": current_user.username,
-        "credits": current_user.credits,
-        "plan": current_user.plan,
-        "avatar_url": current_user.avatar_url,
-    }
+    return _me(current_user)
+
+
+@router.patch("/me")
+def update_me(payload: UpdateProfileRequest, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    return _me(auth_service.update_username(db, current_user.id, payload.username))
+
+
+@router.post("/change-password")
+def change_password(payload: ChangePasswordRequest, request: Request, db: Session = Depends(get_db),
+                    current_user=Depends(get_current_user)):
+    auth_service.change_password(db, current_user.id, request.state.session_id,
+                                 payload.current_password, payload.new_password)
+    return {"message": "Password changed. Other devices were signed out."}
 
 
 @router.post("/logout")

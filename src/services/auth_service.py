@@ -126,3 +126,35 @@ def login_user(db: Session, email: str, password: str) -> str:
     user = authenticate(db, email, password)
     token, _, _ = start_session(db, user)
     return token
+
+
+def change_password(db: Session, user_id: str, keep_session_id: str, current: str, new: str) -> None:
+    from src.Schemas.auth_schema import password_problem
+    from src.config.security_config import verify_password
+
+    user = db.get(User, user_id)
+    if not user or not verify_password(current, user.hashed_password):
+        raise AppError(403, "wrong_password", "Your current password is wrong.")
+    problem = password_problem(new, email=user.email, username=user.username)
+    if problem:
+        raise AppError(422, "validation_error", problem, errors={"new_password": problem})
+    user.hashed_password = hash_password(new)
+    # Sign out every other device: whoever knew the old password loses access.
+    db.query(UserSession).filter(UserSession.user_id == user_id, UserSession.id != keep_session_id,
+                                 UserSession.revoked_at.is_(None)).update(
+        {UserSession.revoked_at: datetime.utcnow()}, synchronize_session=False)
+    db.commit()
+
+
+def update_username(db: Session, user_id: str, username: str) -> User:
+    if db.query(User.id).filter(User.username == username, User.id != user_id).first():
+        raise AppError(409, "username_taken", "That username is taken. Try another.")
+    user = db.get(User, user_id)
+    user.username = username
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise AppError(409, "username_taken", "That username is taken. Try another.") from None
+    db.refresh(user)
+    return user

@@ -39,6 +39,8 @@ SELF = {
     ("GET", "/auth/me/export"),
     ("DELETE", "/auth/me"),
     ("POST", "/auth/logout-all"),
+    ("POST", "/auth/change-password"),
+    ("PATCH", "/auth/me"),
     ("GET", "/storyboards"),
     ("POST", "/storyboards"),
     ("POST", "/storyboards/generate"),

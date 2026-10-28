@@ -79,6 +79,36 @@ class LoginRequest(BaseModel):
         return v
 
 
+class ChangePasswordRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    current_password: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def _new(cls, v: str) -> str:
+        # Email/username checks need the user; the route runs them too.
+        problem = password_problem(v)
+        if problem:
+            raise ValueError(problem)
+        return v
+
+
+class UpdateProfileRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    username: str
+
+    @field_validator("username")
+    @classmethod
+    def _username(cls, v: str) -> str:
+        v = v.strip()
+        if not USERNAME_RE.match(v):
+            raise ValueError("Username must be 3-30 letters, numbers, dots, dashes or underscores.")
+        return v
+
+
 class DeleteAccountRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

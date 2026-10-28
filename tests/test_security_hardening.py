@@ -403,3 +403,41 @@ def test_forwarded_client_ip_is_used_only_with_the_proxy_secret(monkeypatch):
     forged = {"X-Grovii-Proxy-Secret": "guess", "X-Grovii-Client-IP": "203.0.113.7", "X-Forwarded-For": "1.2.3.4"}
     assert _ip_for(forged, monkeypatch) == "10.0.0.5"
     assert _ip_for(good, monkeypatch, secret="") == "10.0.0.5"  # no secret configured: never trust headers
+
+
+# ------------------------------------------ settings actions are real (F) ---
+
+def test_change_password_needs_current_password_and_rules():
+    c, email = _session()
+    r = c.post("/auth/change-password", json={"current_password": "Wrong-password-123", "new_password": "new-strong-pass-2026"},
+               headers=_csrf(c))
+    assert r.status_code == 403 and r.json()["code"] == "wrong_password"
+    r = c.post("/auth/change-password", json={"current_password": STRONG_PASSWORD, "new_password": "short"}, headers=_csrf(c))
+    assert r.status_code == 422 and "new_password" in r.json()["errors"]
+
+
+def test_change_password_works_and_signs_out_other_devices():
+    c1, email = _session()
+    c2 = TestClient(_app())
+    assert c2.post("/auth/login", json={"email": email, "password": STRONG_PASSWORD}).status_code == 200
+    r = c1.post("/auth/change-password", json={"current_password": STRONG_PASSWORD, "new_password": "new-strong-pass-2026"},
+                headers=_csrf(c1))
+    assert r.status_code == 200, r.text
+    assert c1.get("/auth/me").status_code == 200       # this device stays signed in
+    assert c2.get("/auth/me").status_code == 401       # other devices are signed out
+    fresh = TestClient(_app())
+    assert fresh.post("/auth/login", json={"email": email, "password": STRONG_PASSWORD}).status_code == 401
+    assert fresh.post("/auth/login", json={"email": email, "password": "new-strong-pass-2026"}).status_code == 200
+
+
+def test_update_username():
+    c, _ = _session()
+    new = f"creator_{uuid.uuid4().hex[:6]}"
+    r = c.patch("/auth/me", json={"username": new}, headers=_csrf(c))
+    assert r.status_code == 200 and r.json()["username"] == new
+    assert c.get("/auth/me").json()["username"] == new
+    assert c.patch("/auth/me", json={"username": "x"}, headers=_csrf(c)).status_code == 422
+    assert c.patch("/auth/me", json={"credits": 1_000_000}, headers=_csrf(c)).status_code == 422
+    other, _ = _session()
+    taken = other.patch("/auth/me", json={"username": new}, headers=_csrf(other))
+    assert taken.status_code == 409
