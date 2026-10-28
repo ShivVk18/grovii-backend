@@ -1,4 +1,4 @@
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 from src.models.storyboard import Storyboard
 from src.models.scenes import Scene
 from src.models.hook import Hook
@@ -109,14 +109,17 @@ def get_storyboard_with_relations(db: Session, storyboard_id: str, user_id: str)
     try:
         return (
             db.query(Storyboard)
+            # selectinload: one extra small query per relation, returning only
+            # real rows. joinedload on 7 collections returned their cartesian
+            # product (3,376 rows for a typical storyboard; see DB-02).
             .options(
-                joinedload(Storyboard.scenes),
-                joinedload(Storyboard.captions),
-                joinedload(Storyboard.hashtags),
-                joinedload(Storyboard.hooks),
-                joinedload(Storyboard.music),
-                joinedload(Storyboard.trends),
-                joinedload(Storyboard.repurpose),
+                selectinload(Storyboard.scenes),
+                selectinload(Storyboard.captions),
+                selectinload(Storyboard.hashtags),
+                selectinload(Storyboard.hooks),
+                selectinload(Storyboard.music),
+                selectinload(Storyboard.trends),
+                selectinload(Storyboard.repurpose),
             )
             .filter(
                 Storyboard.id == storyboard_id,
