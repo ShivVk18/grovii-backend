@@ -4,6 +4,7 @@ from sqlalchemy import Column, String, Text, Integer, ForeignKey, DateTime,JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime
 
+from sqlalchemy.dialects.postgresql import JSONB
 from src.database import Base
 
 
@@ -100,7 +101,7 @@ class Scene(Base):
 
     emotion=Column(String)
 
-    advanced=Column(JSON)
+    advanced=Column(JSONB)  # JSONB in the database (matches migration d3c4e5f6a7b8)
 
     negative_prompt=Column(Text)
 

@@ -1,6 +1,7 @@
 import uuid
 
 from sqlalchemy import Column, String, Integer, ForeignKey, Text, JSON
+from sqlalchemy.dialects.postgresql import JSONB
 from src.database import Base
 
 
@@ -36,11 +37,11 @@ class MusicSuggestion(Base):
 
     royalty_free_alt=Column(String)
 
-    trending_instagram=Column(JSON)
+    trending_instagram=Column(JSONB)
 
-    trending_tiktok=Column(JSON)
+    trending_tiktok=Column(JSONB)
 
-    trending_youtube=Column(JSON)
+    trending_youtube=Column(JSONB)
 
     genre=Column(String)
 

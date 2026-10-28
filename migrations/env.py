@@ -59,6 +59,11 @@ from src.models.repurpose import RepurposeContent
 target_metadata = Base.metadata
 
 
+def include_object(obj, name, type_, reflected, compare_to):
+    # Bookkeeping tables written by migrations themselves are not app models.
+    return not (type_ == "table" and name.startswith("_alembic"))
+
+
 
 
 def run_migrations_offline():
@@ -120,7 +125,9 @@ def run_migrations_online():
             connection=connection,
 
 
-            target_metadata=target_metadata
+            target_metadata=target_metadata,
+
+            include_object=include_object,
 
         )
 
