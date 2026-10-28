@@ -29,6 +29,7 @@ class OpenAiService:
             timeout=limits.LLM_TIMEOUT_SECONDS,
             max_retries=limits.LLM_MAX_RETRIES,
             max_output_tokens=limits.NODE_MAX_OUTPUT_TOKENS.get(name, limits.DEFAULT_MAX_OUTPUT_TOKENS),
+            thinking_budget=limits.LLM_THINKING_BUDGET,
             callbacks=[UsageCallback(name)],
         )
         if limits.LLM_BASE_URL:

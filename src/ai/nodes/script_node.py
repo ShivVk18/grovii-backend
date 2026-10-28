@@ -71,7 +71,7 @@ def script_node(state):
             }
         )
 
-        script = response.content.strip()
+        script = response.text.strip()  # .text: Gemini returns content as a list of parts
 
         if len(script) < 100:
             raise ValueError(

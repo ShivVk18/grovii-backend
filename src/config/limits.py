@@ -46,9 +46,13 @@ RATE_REGISTER_PER_IP = (_int("RATE_REGISTER_PER_IP", 5), 3600)
 RATE_CREATE_PER_USER = (_int("RATE_CREATE_PER_USER", 30), 60)
 
 # -------------------------------------------------------------------- LLM ----
-# gemini-2.5-flash returned 404 "no longer available to new users" on
-# 2026-10-28; Google's error named gemini-3.8-flash as the replacement.
-LLM_MODEL = os.getenv("LLM_MODEL", "gemini-3.8-flash")
+# Owner's choice (Phase D). On 2026-10-28 gemini-3.8-flash and 3.7-flash
+# returned 504 on every call; 3.6-flash answered in ~3s.
+LLM_MODEL = os.getenv("LLM_MODEL", "gemini-3.6-flash")
+# Hidden "thinking" tokens count against max_output_tokens and are billed as
+# output. With the default, 55 of 60 tokens went to thinking and the visible
+# answer was cut to one word. 0 disables it; raise only with bigger caps.
+LLM_THINKING_BUDGET = _int("LLM_THINKING_BUDGET", 0)
 # Optional: route LLM calls through a proxy or compatible endpoint.
 LLM_BASE_URL = os.getenv("LLM_BASE_URL") or None
 LLM_TIMEOUT_SECONDS = _float("LLM_TIMEOUT_SECONDS", 60.0)

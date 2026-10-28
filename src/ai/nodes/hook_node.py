@@ -55,7 +55,7 @@ def hook_node(state):
             }
         )
 
-        hook = response.content.strip()
+        hook = response.text.strip()  # .text: Gemini returns content as a list of parts
 
         if len(hook.split()) > 15:
             raise ValueError(
