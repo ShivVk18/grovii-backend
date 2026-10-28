@@ -18,11 +18,13 @@ def record_job_usage(db: Session, job_id: str, meter: UsageMeter) -> None:
     db.execute(
         update(Job)
         .where(Job.id == job_id)
+        # Add to what earlier attempts of the same job recorded (RQ retries
+        # run the job function again; each attempt has its own meter).
         .values(
-            prompt_tokens=meter.prompt_tokens,
-            completion_tokens=meter.completion_tokens,
-            llm_calls=meter.calls,
-            cost_usd=Decimal(str(round(meter.cost_usd, 6))),
+            prompt_tokens=func.coalesce(Job.prompt_tokens, 0) + meter.prompt_tokens,
+            completion_tokens=func.coalesce(Job.completion_tokens, 0) + meter.completion_tokens,
+            llm_calls=func.coalesce(Job.llm_calls, 0) + meter.calls,
+            cost_usd=func.coalesce(Job.cost_usd, 0) + Decimal(str(round(meter.cost_usd, 6))),
         )
     )
     db.commit()
