@@ -124,15 +124,32 @@ def client():
     return TestClient(app)
 
 
-@pytest.fixture
-def auth_headers(client):
-    email = f"{uuid.uuid4().hex[:8]}@example.com"
-    password = "correct-horse-battery"
-    r = client.post("/auth/register", json={"username": email.split("@")[0], "email": email, "password": password})
-    assert r.status_code == 200, r.text
+# Passes the Phase F password rules.
+STRONG_PASSWORD = "correct-horse-battery-staple"
+
+
+def login_token(client, email: str, password: str) -> str:
+    """Log in and return the session token (from the cookie since Phase F)."""
     r = client.post("/auth/login", json={"email": email, "password": password})
     assert r.status_code == 200, r.text
-    return {"Authorization": f"Bearer {r.json()['access_token']}"}
+    token = r.cookies.get("grovii_session")
+    client.cookies.clear()
+    return token
+
+
+@pytest.fixture
+def auth_headers(client):
+    """Bearer header for API-style tests. Since Phase F login sets a cookie and
+    returns no token; the header carries that same session token (bearer
+    requests need no CSRF header, as browsers can't add one cross-site)."""
+    email = f"{uuid.uuid4().hex[:8]}@example.com"
+    r = client.post("/auth/register", json={"username": email.split("@")[0], "email": email, "password": STRONG_PASSWORD})
+    assert r.status_code == 200, r.text
+    r = client.post("/auth/login", json={"email": email, "password": STRONG_PASSWORD})
+    assert r.status_code == 200, r.text
+    token = r.cookies.get("grovii_session") or r.json().get("access_token")
+    client.cookies.clear()  # header-only, so tests exercise the bearer path
+    return {"Authorization": f"Bearer {token}"}
 
 
 VALID_STORYBOARD = {
