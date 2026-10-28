@@ -23,7 +23,9 @@ def make_user(base: str) -> dict:
     email = f"load_{uuid.uuid4().hex[:10]}@example.com"
     pw = "load-test-password"  # gitleaks:allow (throwaway test account)
     httpx.post(f"{base}/auth/register", json={"username": email.split("@")[0], "email": email, "password": pw}, timeout=30)
-    token = httpx.post(f"{base}/auth/login", json={"email": email, "password": pw}, timeout=30).json()["access_token"]
+    r = httpx.post(f"{base}/auth/login", json={"email": email, "password": pw}, timeout=30)
+    # Since Phase F the session token comes back as a cookie, not in the body.
+    token = r.cookies.get("grovii_session") or r.cookies.get("__Host-grovii_session")
     return {"Authorization": f"Bearer {token}"}
 
 

@@ -1,88 +1,93 @@
-from fastapi import APIRouter, Depends, HTTPException
+import json
+
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.orm import Session
 
-from src.config import limits
+from src.api.errors import AppError
+from src.config import security_settings as settings
 from src.config.dependencies_config import get_current_user
+from src.config.security_config import verify_password
 from src.database import get_db
-from src.Schemas.auth_schema import LoginRequest, RegisterRequest
-from src.services.auth_service import login_user, register_user
-from src.services.rate_limit import enforce, limit_login_ip, limit_register_ip
+from src.models.users import User
+from src.Schemas.auth_schema import DeleteAccountRequest, LoginRequest, RegisterRequest
+from src.services import account_service, auth_service
+from src.services.rate_limit import limit_login_ip, limit_register_ip
 
-router = APIRouter(
-    prefix="/auth",
-    tags=["Auth"]
-)
+router = APIRouter(prefix="/auth", tags=["Auth"])
+
+
+def _set_session_cookies(response: Response, token: str, csrf: str, max_age: int) -> None:
+    common = {"max_age": max_age, "path": "/", "secure": settings.cookie_secure(), "samesite": "lax"}
+    # The session itself: never readable by page scripts.
+    response.set_cookie(settings.cookie_name(settings.SESSION_COOKIE), token, httponly=True, **common)
+    # The CSRF token: the frontend reads it and echoes it in X-CSRF-Token.
+    response.set_cookie(settings.cookie_name(settings.CSRF_COOKIE), csrf, httponly=False, **common)
+
+
+def _clear_session_cookies(response: Response) -> None:
+    for base in (settings.SESSION_COOKIE, settings.CSRF_COOKIE):
+        response.delete_cookie(settings.cookie_name(base), path="/", secure=settings.cookie_secure(), samesite="lax")
 
 
 @router.post("/register", dependencies=[Depends(limit_register_ip)])
-def register(
-    payload: RegisterRequest,
-    db: Session = Depends(get_db)
-):
-    try:
-        user = register_user(
-            db=db,
-            username=payload.username,
-            email=payload.email,
-            password=payload.password
-        )
-
-        return {
-            "message": "User registered",
-            "user_id": str(user.id)
-        }
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=400,
-            detail=str(e)
-        )
+def register(payload: RegisterRequest, db: Session = Depends(get_db)):
+    user = auth_service.register_user(db=db, username=payload.username, email=payload.email, password=payload.password)
+    return {"message": "User registered", "user_id": str(user.id)}
 
 
 @router.post("/login", dependencies=[Depends(limit_login_ip)])
-def login(
-    payload: LoginRequest,
-    db: Session = Depends(get_db)
-):
-    # Per-account limit slows password guessing spread across many IPs.
-    enforce("login_email", payload.email, limits.RATE_LOGIN_PER_EMAIL)
-    try:
-        token = login_user(
-            db=db,
-            email=payload.email,
-            password=payload.password
-        )
-
-        return {
-            "access_token": token,
-            "token_type": "bearer"
-        }
-
-    except Exception as e:
-        raise HTTPException(
-            status_code=401,
-            detail=str(e)
-        )
+def login(payload: LoginRequest, response: Response, db: Session = Depends(get_db)):
+    user = auth_service.authenticate(db, payload.email, payload.password)
+    token, csrf, max_age = auth_service.start_session(db, user)
+    _set_session_cookies(response, token, csrf, max_age)
+    # No token in the body: page scripts must not be able to read it.
+    return {"message": "Signed in"}
 
 
 @router.get("/me")
-def me(
-    current_user=Depends(
-        get_current_user
-    )
-):
+def me(current_user=Depends(get_current_user)):
     return {
         "id": str(current_user.id),
         "email": current_user.email,
         "username": current_user.username,
         "credits": current_user.credits,
         "plan": current_user.plan,
-        "avatar_url": current_user.avatar_url
+        "avatar_url": current_user.avatar_url,
     }
 
 
 @router.post("/logout")
-def logout():
-    return {
-        "message": "Logout successful"
-    }
+def logout(request: Request, response: Response, db: Session = Depends(get_db),
+           current_user=Depends(get_current_user)):
+    auth_service.revoke_session(db, request.state.session_id)
+    _clear_session_cookies(response)
+    return {"message": "Logout successful"}
+
+
+@router.post("/logout-all")
+def logout_all(response: Response, db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    n = auth_service.revoke_all_sessions(db, current_user.id)
+    _clear_session_cookies(response)
+    return {"message": f"Signed out of {n} session(s)."}
+
+
+@router.get("/me/export")
+def export_my_data(db: Session = Depends(get_db), current_user=Depends(get_current_user)):
+    data = account_service.export_user_data(db, current_user.id)
+    return Response(
+        content=json.dumps(data, ensure_ascii=False, indent=2),
+        media_type="application/json",
+        headers={"Content-Disposition": 'attachment; filename="grovii-my-data.json"', "Cache-Control": "no-store"},
+    )
+
+
+@router.delete("/me")
+def delete_my_account(payload: DeleteAccountRequest, response: Response, db: Session = Depends(get_db),
+                      current_user=Depends(get_current_user)):
+    # Re-check the password: a stolen open session alone can't delete the account.
+    hashed = db.query(User.hashed_password).filter(User.id == current_user.id).scalar()
+    if not hashed or not verify_password(payload.password, hashed):
+        raise AppError(403, "wrong_password", "That password is wrong. Your account was not deleted.")
+    account_service.delete_user_data(db, current_user.id)
+    _clear_session_cookies(response)
+    return {"message": "Your account and all your data were deleted."}

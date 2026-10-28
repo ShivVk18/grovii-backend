@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any, Optional
 from uuid import UUID
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from src.ai.prompt_safety import neutralize_delimiters
 from src.Schemas.options import GOALS, LANGUAGES, PLATFORMS, STYLES, TONES, canonical
@@ -37,7 +37,10 @@ def _duration(value: Any) -> int:
 
 
 class _StoryboardFields(BaseModel):
-    """Validators shared by create and update. A None value means "not given"."""
+    """Validators shared by create and update. A None value means "not given".
+    Unknown fields (user_id, status, credits, hook...) are refused: 422."""
+
+    model_config = ConfigDict(extra="forbid")
 
     @field_validator("idea", mode="before", check_fields=False)
     @classmethod

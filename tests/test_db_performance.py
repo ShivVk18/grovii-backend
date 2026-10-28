@@ -113,15 +113,24 @@ def test_auth_dependency_returns_its_connection_before_the_handler_runs(db, user
     load every thread could wait for a connection while every connection
     waited for a thread (seen as HTTP 500 after DB_POOL_TIMEOUT at 50
     concurrent requests). The dependency must end its transaction."""
+    from datetime import datetime, timedelta
+
     from fastapi.security import HTTPAuthorizationCredentials
+    from starlette.requests import Request
 
     from src.config.dependencies_config import get_current_user
     from src.config.security_config import create_access_token
+    from src.models.sessions import UserSession
 
     uid = user.id
+    session = UserSession(user_id=uid, expires_at=datetime.utcnow() + timedelta(hours=1))
+    db.add(session)
+    db.commit()
+    sid = session.id
     db.rollback()
-    creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials=create_access_token(uid))
-    current = get_current_user(credentials=creds, db=db)
+    creds = HTTPAuthorizationCredentials(scheme="Bearer", credentials=create_access_token(uid, sid))
+    request = Request({"type": "http", "method": "GET", "headers": [], "path": "/"})
+    current = get_current_user(request=request, credentials=creds, db=db)
 
     assert not db.in_transaction(), "connection still checked out after auth"
     assert current.id == uid and current.email  # attributes usable without a new query

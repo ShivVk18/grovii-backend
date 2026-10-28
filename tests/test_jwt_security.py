@@ -93,9 +93,21 @@ def _me(client, token):
     return client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
 
 
+def _session_id(user_id):
+    """A live server-side session (Phase F tokens must name one)."""
+    from src.database import SessionLocal
+    from src.models.sessions import UserSession
+
+    with SessionLocal() as s:
+        row = UserSession(user_id=user_id, expires_at=datetime.utcnow() + timedelta(hours=1))
+        s.add(row)
+        s.commit()
+        return row.id
+
+
 def _claims(user_id, **overrides):
     now = datetime.now(timezone.utc)
-    claims = {"sub": user_id, "iat": now, "exp": now + timedelta(minutes=5)}
+    claims = {"sub": user_id, "sid": _session_id(user_id), "iat": now, "exp": now + timedelta(minutes=5)}
     claims.update(overrides)
     return {k: v for k, v in claims.items() if v is not None}
 
@@ -143,7 +155,8 @@ def test_issued_token_has_exp_and_iat_matching_config(client, user_id):
     from src.config.security_config import ACCESS_TOKEN_EXPIRE_MINUTES
 
     r = client.post("/auth/login", json={"email": "jwt@example.com", "password": TEST_PASSWORD})
-    claims = jwt.get_unverified_claims(r.json()["access_token"])
+    claims = jwt.get_unverified_claims(r.cookies["grovii_session"])
+    assert claims.get("sid"), "token must name a server-side session"
     assert claims["sub"] == user_id
     assert "iat" in claims and "exp" in claims
     assert abs((claims["exp"] - claims["iat"]) - ACCESS_TOKEN_EXPIRE_MINUTES * 60) <= 1

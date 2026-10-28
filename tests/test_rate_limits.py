@@ -8,7 +8,8 @@ from redis.exceptions import ConnectionError as RedisConnectionError
 
 from src.config import limits
 from src.models.users import User
-from tests.conftest import VALID_STORYBOARD
+from src.config import security_settings
+from tests.conftest import VALID_STORYBOARD, login_token
 
 TEST_PASSWORD = "pw-123456789"  # gitleaks:allow  (test-only password, not a secret)
 
@@ -34,18 +35,19 @@ def assert_rate_limited(r):
 # ------------------------------------------------------------------ login ----
 def test_login_is_limited_per_ip(client, monkeypatch):
     monkeypatch.setattr(limits, "RATE_LOGIN_PER_IP", (3, 60))
-    monkeypatch.setattr(limits, "RATE_LOGIN_PER_EMAIL", (100, 60))
     for i in range(3):
         assert _login(client, f"user{i}@example.com").status_code == 401
     assert_rate_limited(_login(client, "another@example.com"))
 
 
 def test_login_is_limited_per_email_across_ips(client, monkeypatch):
+    # Since Phase F: failed attempts per account lock it for a while (any IP).
     monkeypatch.setattr(limits, "RATE_LOGIN_PER_IP", (100, 60))
-    monkeypatch.setattr(limits, "RATE_LOGIN_PER_EMAIL", (2, 60))
+    monkeypatch.setattr(security_settings, "LOGIN_MAX_FAILURES", 2)
     assert _login(client, "victim@example.com").status_code == 401
     assert _login(client, "VICTIM@example.com").status_code == 401  # same account, different case
-    assert_rate_limited(_login(client, "victim@example.com"))
+    r = _login(client, "victim@example.com")
+    assert r.status_code == 429 and r.json()["code"] == "login_locked" and int(r.headers["Retry-After"]) >= 1
     assert _login(client, "someone-else@example.com").status_code == 401
 
 
@@ -97,7 +99,7 @@ def test_generation_is_limited_per_ip_across_users(client, db, monkeypatch):
     def headers_for_new_user():
         e = f"{uuid.uuid4().hex[:8]}@example.com"
         client.post("/auth/register", json={"username": e.split("@")[0], "email": e, "password": TEST_PASSWORD})
-        token = client.post("/auth/login", json={"email": e, "password": TEST_PASSWORD}).json()["access_token"]
+        token = login_token(client, e, TEST_PASSWORD)
         return {"Authorization": f"Bearer {token}"}
 
     assert client.post("/storyboards/generate", json=VALID_STORYBOARD, headers=headers_for_new_user()).status_code == 200

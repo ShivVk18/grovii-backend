@@ -12,7 +12,7 @@ from src.models.scenes import Scene
 from src.models.storyboard import Storyboard
 from src.models.users import User
 from src.Schemas.storyboard_schema import CreateStoryboardRequest
-from tests.conftest import VALID_STORYBOARD
+from tests.conftest import STRONG_PASSWORD, login_token, VALID_STORYBOARD
 
 GOOD_SCENES = [{"title": f"S{i}", "duration": 6, "what_to_show": "Pour coffee",
                 "voiceover_example": f"Line {i}"} for i in range(1, 6)]
@@ -304,8 +304,8 @@ def test_cannot_cancel_running_or_other_users_job(client, auth_headers, db):
     assert client.post(f"/storyboards/jobs/{job_id}/cancel", headers=auth_headers).status_code == 409
 
     e = "other@example.com"
-    client.post("/auth/register", json={"username": "other", "email": e, "password": "correct-horse-battery"})
-    tok = client.post("/auth/login", json={"email": e, "password": "correct-horse-battery"}).json()["access_token"]
+    client.post("/auth/register", json={"username": "other", "email": e, "password": STRONG_PASSWORD})
+    tok = login_token(client, e, STRONG_PASSWORD)
     assert client.post(f"/storyboards/jobs/{job_id}/cancel",
                        headers={"Authorization": f"Bearer {tok}"}).status_code == 404
 

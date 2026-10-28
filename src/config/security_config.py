@@ -8,6 +8,9 @@ run with a secret an attacker could guess.
 Generate a secret with:
     python -c "import secrets; print(secrets.token_urlsafe(64))"
 """
+import base64
+import hashlib
+import hmac
 import os
 from datetime import datetime, timedelta, timezone
 
@@ -91,21 +94,62 @@ def hash_password(password: str) -> str:
     return hashed.decode('utf-8')
 
 
+# bcrypt only uses the first 72 bytes; bcrypt>=5 raises instead of truncating.
+BCRYPT_MAX_BYTES = 72
+
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return bcrypt.checkpw(
-        plain_password.encode('utf-8'),
-        hashed_password.encode('utf-8')
-    )
+    """False (never an exception) for wrong, over-long or malformed input."""
+    pw = plain_password.encode('utf-8')
+    if len(pw) > BCRYPT_MAX_BYTES:
+        pw = pw[:BCRYPT_MAX_BYTES]  # still do the work; no account accepts these (rule at signup)
+        try:
+            bcrypt.checkpw(pw, hashed_password.encode('utf-8'))
+        except ValueError:
+            pass
+        return False
+    try:
+        return bcrypt.checkpw(pw, hashed_password.encode('utf-8'))
+    except ValueError:
+        return False
 
 
-def create_access_token(user_id: str) -> str:
+def create_access_token(user_id: str, session_id: str | None = None) -> str:
+    """Signed token for one session. Since Phase F every valid token names a
+    server-side session (`sid`), so it can be revoked before it expires."""
     now = datetime.now(timezone.utc)
     payload = {
         "sub": user_id,
         "iat": now,
         "exp": now + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     }
+    if session_id:
+        payload["sid"] = session_id
     return jwt.encode(payload, JWT_SECRET_KEY, algorithm=ALGORITHM)
+
+
+def csrf_token_for(session_id: str) -> str:
+    """CSRF token bound to one session (signed double-submit). The frontend
+    reads it from a cookie and echoes it in a header; another site can't read
+    our cookies, so it can't produce the header."""
+    digest = hmac.new(JWT_SECRET_KEY.encode(), f"csrf:{session_id}".encode(), hashlib.sha256).digest()
+    return base64.urlsafe_b64encode(digest).decode().rstrip("=")
+
+
+def csrf_matches(session_id: str, presented: str | None) -> bool:
+    return bool(presented) and hmac.compare_digest(csrf_token_for(session_id), presented or "")
+
+
+# A real bcrypt hash of a random value, checked when the email is unknown so a
+# login takes the same time whether or not the account exists.
+_DUMMY_HASH = bcrypt.hashpw(os.urandom(16), bcrypt.gensalt()).decode()
+
+
+def verify_password_or_dummy(plain_password: str, hashed_password: str | None) -> bool:
+    if not hashed_password:
+        verify_password(plain_password, _DUMMY_HASH)
+        return False
+    return verify_password(plain_password, hashed_password)
 
 
 def decode_access_token(token: str) -> dict:

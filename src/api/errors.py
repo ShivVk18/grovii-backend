@@ -7,6 +7,7 @@ shows `detail` directly. Machine-readable extras sit next to it:
     {"detail": "Idea must be at least 10 characters.", "code": "validation_error",
      "errors": {"idea": "Idea must be at least 10 characters."}}
 """
+import logging
 from typing import Any
 
 from fastapi import FastAPI, Request
@@ -32,6 +33,8 @@ def _field_message(error: dict) -> str:
         msg = msg[len("Value error, "):]
     if error.get("type") == "missing":
         msg = "This field is required."
+    elif error.get("type") == "extra_forbidden":
+        msg = "This field can't be set."
     elif error.get("type") == "json_invalid":
         msg = "The request body is not valid JSON."
     return msg
@@ -60,6 +63,21 @@ async def _validation_handler(_: Request, exc: RequestValidationError) -> JSONRe
     )
 
 
+logger = logging.getLogger("grovii.errors")
+
+
+async def _unhandled_handler(request: Request, exc: Exception) -> JSONResponse:
+    # Full details go to the server log (type and place only, see
+    # log_safety); the client gets a generic message, never a traceback.
+    logger.error("Unhandled %s on %s %s", type(exc).__name__, request.method, request.url.path,
+                 exc_info=(type(exc), exc, exc.__traceback__))
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Something went wrong on our side. Please try again.", "code": "internal_error"},
+    )
+
+
 def register_error_handlers(app: FastAPI) -> None:
+    app.add_exception_handler(Exception, _unhandled_handler)
     app.add_exception_handler(AppError, _app_error_handler)  # type: ignore[arg-type]
     app.add_exception_handler(RequestValidationError, _validation_handler)  # type: ignore[arg-type]
