@@ -67,3 +67,30 @@ def test_storyboard_with_relations_returns_only_real_rows(db, user):
     print(f"\nget_storyboard_with_relations: {stats['queries']} queries, {stats['rows']} rows")
     assert stats["rows"] <= REAL_ROWS
     assert stats["queries"] <= 1 + len(CHILDREN)
+
+
+def test_pool_is_sized_from_env_with_pre_ping():
+    import os
+    import subprocess
+    import sys
+
+    code = ("from src.database import engine as e; p = e.pool; "
+            "print(p.size(), p._max_overflow, p._timeout, e.pool._pre_ping)")
+    env = {**os.environ, "DB_POOL_SIZE": "7", "DB_MAX_OVERFLOW": "3", "DB_POOL_TIMEOUT": "4"}
+    out = subprocess.run([sys.executable, "-c", code], env=env, capture_output=True, text=True, check=True)
+    assert out.stdout.split() == ["7", "3", "4.0", "True"]
+
+
+def test_worker_process_uses_a_small_pool():
+    import os
+    import subprocess
+    import sys
+
+    env = {k: v for k, v in os.environ.items() if k not in ("DB_POOL_SIZE", "DB_MAX_OVERFLOW")}
+    code = ("from unittest.mock import patch\n"
+            "with patch('rq.SimpleWorker'):\n"
+            "    import src.services.worker\n"
+            "from src.database import engine as e\n"
+            "print(e.pool.size(), e.pool._max_overflow)")
+    out = subprocess.run([sys.executable, "-c", code], env=env, capture_output=True, text=True, check=True)
+    assert out.stdout.split() == ["2", "1"]
