@@ -55,9 +55,18 @@ def test_ready_is_503_when_redis_is_down():
 
 
 def test_ready_is_503_when_the_database_is_behind_the_code():
-    with patch("src.api.ops.current_db_revision", return_value="0000000000"):
+    # An older revision this code knows about: `alembic upgrade head` is missing.
+    with patch("src.api.ops.current_db_revision", return_value="a7b8c9d0e1f2"):
         r = TestClient(_app()).get("/ready")
     assert r.status_code == 503 and r.json()["checks"]["migrations"]["ok"] is False
+
+
+def test_ready_stays_ok_when_the_database_is_ahead_of_the_code():
+    """During a deploy (migrate first, then switch traffic) and after an
+    app-only rollback, older code meets a newer schema: keep serving."""
+    with patch("src.api.ops.current_db_revision", return_value="ffffffffffff"):
+        r = TestClient(_app()).get("/ready")
+    assert r.status_code == 200 and "newer" in r.json()["checks"]["migrations"]["note"]
 
 
 def test_deep_health_reports_workers_and_queue():

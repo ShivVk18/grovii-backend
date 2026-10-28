@@ -41,13 +41,31 @@ def current_db_revision() -> str | None:
 
 
 @lru_cache(maxsize=1)
-def head_revision() -> str | None:
+def _scripts():
     from alembic.config import Config
     from alembic.script import ScriptDirectory
 
     cfg = Config(str(ROOT / "alembic.ini"))
     cfg.set_main_option("script_location", str(ROOT / "migrations"))
-    return ScriptDirectory.from_config(cfg).get_current_head()
+    return ScriptDirectory.from_config(cfg)
+
+
+def head_revision() -> str | None:
+    return _scripts().get_current_head()
+
+
+def migration_state() -> dict:
+    """ok when the database is at this code's head, or AHEAD of it (a newer
+    release already migrated; old instances keep serving during a deploy and
+    after an app-only rollback). Not ok when the database is behind the code."""
+    db_rev = current_db_revision()
+    head = head_revision()
+    if db_rev == head:
+        return {"ok": True}
+    known = {rev.revision for rev in _scripts().walk_revisions()}
+    if db_rev and db_rev not in known:
+        return {"ok": True, "note": "database is newer than this release"}
+    return {"ok": False, "note": "database needs `alembic upgrade head`"}
 
 
 def check_redis() -> bool:
@@ -84,10 +102,14 @@ def _run(name: str, fn) -> dict:
 def _readiness() -> dict:
     checks = {"database": _run("database", check_database), "redis": _run("redis", check_redis)}
 
-    def migrations_ok() -> bool:
-        return current_db_revision() == head_revision()
-
-    checks["migrations"] = _run("migrations", migrations_ok) if checks["database"]["ok"] else {"ok": False}
+    if checks["database"]["ok"]:
+        try:
+            checks["migrations"] = migration_state()
+        except Exception as e:  # noqa: BLE001
+            logger.warning("Readiness check migrations failed: %s", type(e).__name__)
+            checks["migrations"] = {"ok": False}
+    else:
+        checks["migrations"] = {"ok": False}
     return checks
 
 
