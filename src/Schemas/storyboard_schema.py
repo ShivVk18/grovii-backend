@@ -80,6 +80,16 @@ class _StoryboardFields(BaseModel):
         return None if v is None else canonical(LANGUAGES, v, "Language")
 
 
+CONSTRAINT_MAX = 120
+
+
+def _optional_text(v, label):
+    if v is None:
+        return None
+    text = _text(v, label, 0, CONSTRAINT_MAX)
+    return text or None
+
+
 class CreateStoryboardRequest(_StoryboardFields):
     idea: str
     goal: str
@@ -89,6 +99,23 @@ class CreateStoryboardRequest(_StoryboardFields):
     duration: int
     platform: str
     language: str = "English"
+    # Optional creator constraints (Phase D): respected by the scene planner.
+    faceless: bool = False
+    location: Optional[str] = None
+    equipment: Optional[str] = None
+
+    @field_validator("location", mode="before")
+    @classmethod
+    def _location(cls, v):
+        return _optional_text(v, "Location")
+
+    @field_validator("equipment", mode="before")
+    @classmethod
+    def _equipment(cls, v):
+        return _optional_text(v, "Equipment")
+
+    def constraints(self) -> dict:
+        return {"faceless": self.faceless, "location": self.location, "equipment": self.equipment}
 
     @field_validator("language", mode="before")
     @classmethod
@@ -141,6 +168,10 @@ class StoryboardResponse(BaseModel):
     
     thumbnail_prompt: Optional[str] = None
 
+    # Phase D
+    constraints: Optional[dict] = None
+    brief_choice: Optional[str] = None
+
     created_at: datetime
 
 
@@ -170,6 +201,8 @@ class SceneResponse(BaseModel):
     scene_number: int
     title: Optional[str] = None
     duration: Optional[str] = None
+    start_seconds: Optional[int] = None
+    end_seconds: Optional[int] = None
     what_to_show: Optional[str] = None
     voiceover_example: Optional[str] = None
     onscreen_text: Optional[str] = None
@@ -228,6 +261,8 @@ class MusicResponse(BaseModel):
     mood: Optional[str] = None
     platform_popularity: Optional[str] = None
     royalty_free_alt: Optional[str] = None
+    verified: Optional[bool] = None
+    licensing_note: Optional[str] = None
     trending_instagram: Optional[list] = None
     trending_tiktok: Optional[list] = None
     trending_youtube: Optional[list] = None
@@ -262,6 +297,7 @@ class StoryboardDetailResponse(StoryboardResponse):
     hook: Optional[str] = None
     script: Optional[str] = None
     status: str
+    status_reason: Optional[str] = None
     scenes: list[SceneResponse] = []
     captions: list[CaptionResponse] = []
     hashtags: list[HashtagResponse] = []

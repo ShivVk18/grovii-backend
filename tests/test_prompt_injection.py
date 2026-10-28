@@ -20,9 +20,7 @@ INJECTIONS = [
 
 PROMPTS = [
     ("src.ai.prompts.hook_prompts", "hook_prompt"),
-    ("src.ai.prompts.hook_regenerator_prompt", "hook_regenerator_prompt"),
     ("src.ai.prompts.scene_prompt", "scene_prompt"),
-    ("src.ai.prompts.script_prompt", "script_prompt"),
     ("src.ai.prompts.caption_prompts", "caption_prompt"),
     ("src.ai.prompts.hashtag_prompt", "hashtag_prompt"),
     ("src.ai.prompts.music_prompt", "music_suggestion_prompt"),

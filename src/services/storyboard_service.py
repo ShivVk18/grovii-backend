@@ -119,6 +119,7 @@ def reserve_generation(db: Session, payload, user_id: str):
             duration=payload.duration,
             platform=payload.platform,
             language=payload.language,
+            constraints=payload.constraints() if hasattr(payload, "constraints") else None,
             status="queued",
         )
         db.add(storyboard)
@@ -144,6 +145,9 @@ def _job_state(payload) -> dict:
         "duration": payload.duration,
         "platform": payload.platform,
         "language": payload.language,
+        "faceless": getattr(payload, "faceless", False),
+        "location": getattr(payload, "location", None),
+        "equipment": getattr(payload, "equipment", None),
         "hook": "",
         "scenes": [],
         "script": "",

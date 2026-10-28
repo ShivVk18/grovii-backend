@@ -1,7 +1,9 @@
-from src.ai.prompts.repurpose_prompt import repurpose_content_prompt
-from src.services.openai_service import openai_service
 from langchain_core.output_parsers import JsonOutputParser
+
+from src.ai.inputs import common_inputs
+from src.ai.prompts.repurpose_prompt import repurpose_content_prompt
 from src.Schemas.repurpose import RepurposeOutput
+from src.services.openai_service import openai_service
 
 
 def get_state_val(state, key, default=""):
@@ -24,7 +26,7 @@ def repurpose_node(state):
     chain = repurpose_content_prompt | llm | parser
 
     response = chain.invoke({
-        "script": get_state_val(state, "script"),
+        **common_inputs(state),
         "format_instructions": parser.get_format_instructions()
     })
     

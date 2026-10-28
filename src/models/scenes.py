@@ -102,6 +102,9 @@ class Scene(Base):
     emotion=Column(String)
 
     advanced=Column(JSONB)  # JSONB in the database (matches migration d3c4e5f6a7b8)
+    # Contiguous timeline in seconds from the start of the video (Phase D).
+    start_seconds=Column(Integer, nullable=True)
+    end_seconds=Column(Integer, nullable=True)
 
     negative_prompt=Column(Text)
 

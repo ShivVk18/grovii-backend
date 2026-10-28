@@ -36,12 +36,24 @@ def neutralize_delimiters(text: str) -> str:
     return _TAG.sub("[tag removed]", text)
 
 
+# Appended to every prompt so language and tone reach every node (QUAL-03).
+LANGUAGE_RULES = """
+
+LANGUAGE AND TONE (mandatory):
+- Write every word a viewer will hear or read, and every instruction the creator will read, in {language}, with a {tone} tone.
+- If the language is Hinglish: Roman (Latin) script only, never Devanagari; mix Hindi and English the way Indian creators naturally speak.
+- If the language is Hindi: Devanagari script.
+- Keep JSON keys exactly as specified, in English.
+"""
+
+
 def harden(prompt: PromptTemplate) -> PromptTemplate:
     template = prompt.template
     for field in USER_TEXT_FIELDS:
         template = template.replace("{" + field + "}", "<user_input>\n{" + field + "}\n</user_input>")
+    variables = list(dict.fromkeys([*prompt.input_variables, "language", "tone"]))
     return PromptTemplate(
-        template=SAFETY_PREAMBLE + template,
-        input_variables=prompt.input_variables,
+        template=SAFETY_PREAMBLE + template + LANGUAGE_RULES,
+        input_variables=variables,
         partial_variables=prompt.partial_variables,
     )

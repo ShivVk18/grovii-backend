@@ -65,10 +65,9 @@ LLM_MAX_RETRIES = _int("LLM_MAX_RETRIES", 2)
 # hashtags 86, music 100, repurpose 599. Caps leave 2x+ headroom; the script
 # and scenes caps also leave room for longer videos (up to 180s).
 NODE_MAX_OUTPUT_TOKENS: dict[str, int] = {
-    "hook": 150,
-    "hook_regenerator": 800,
-    "director": 5000,
-    "script": 1500,
+    "hook": 600,        # 4 scored candidates as JSON (Phase D)
+    "director": 6000,   # scenes now also carry the full narration
+
     "caption": 800,
     "hashtag": 500,
     "music": 1500,

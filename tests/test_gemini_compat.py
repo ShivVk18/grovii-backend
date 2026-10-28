@@ -7,8 +7,6 @@ from langchain_core.messages import AIMessage
 
 from src.config import limits
 
-LONG_SCRIPT = "This is the voiceover script line. " * 10
-
 
 def _list_content(text):
     # Gemini 3.x returns content as a list of parts, not a plain string.
@@ -33,14 +31,7 @@ def test_get_llm_disables_hidden_thinking_by_default():
 def test_hook_node_reads_list_content():
     from src.ai.nodes.hook_node import hook_node
 
-    with _fake(_list_content("Stop making bitter coffee today")):
+    reply = '{"hooks": [{"hook": "Stop making bitter coffee today", "score": 90}]}'
+    with _fake(_list_content(reply)):
         out = hook_node({"idea": "coffee", "goal": "educate", "tone": "calm", "audience": "ab", "platform": "reels"})
     assert out["hook"] == "Stop making bitter coffee today"
-
-
-def test_script_node_reads_list_content():
-    from src.ai.nodes.script_node import script_node
-
-    with _fake(_list_content(LONG_SCRIPT)):
-        out = script_node({"hook": "h", "scenes": [], "audience": "ab", "platform": "reels"})
-    assert out["script"] == LONG_SCRIPT.strip()

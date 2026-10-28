@@ -1,7 +1,9 @@
-from src.ai.prompts.trend_prompt import trend_analyzer_prompt
-from src.services.openai_service import openai_service
 from langchain_core.output_parsers import JsonOutputParser
+
+from src.ai.inputs import common_inputs
+from src.ai.prompts.trend_prompt import trend_analyzer_prompt
 from src.Schemas.trend import TrendAnalyzerOutput
+from src.services.openai_service import openai_service
 
 
 def get_state_val(state, key, default=""):
@@ -24,9 +26,7 @@ def trend_node(state):
     chain = trend_analyzer_prompt | llm | parser
 
     response = chain.invoke({
-        "idea": get_state_val(state, "idea"),
-        "platform": get_state_val(state, "platform"),
-        "audience": get_state_val(state, "audience"),
+        **common_inputs(state),
         "format_instructions": parser.get_format_instructions()
     })
     

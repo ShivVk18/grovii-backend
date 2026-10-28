@@ -6,7 +6,6 @@ from langgraph.graph import StateGraph, END
 from src.ai.state import GraphState
 
 from src.ai.nodes.hook_node import hook_node
-from src.ai.nodes.hook_regenerator_node import hook_regenerator_node
 from src.ai.nodes.scene_node import scene_node
 from src.ai.nodes.script_node import script_node
 
@@ -30,11 +29,6 @@ builder = StateGraph(GraphState)
 builder.add_node(
     "hook",
     hook_node
-)
-
-builder.add_node(
-    "hook_regenerator",
-    hook_regenerator_node
 )
 
 builder.add_node(
@@ -104,19 +98,9 @@ builder.add_edge(
 
     "hook",
 
-    "hook_regenerator"
-
-)
-
-
-builder.add_edge(
-
-    "hook_regenerator",
-
     "director"
 
 )
-
 
 
 builder.add_edge(

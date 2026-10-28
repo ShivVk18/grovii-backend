@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import Column, String, Integer, ForeignKey, Text, JSON
+from sqlalchemy import JSON, Boolean, Column, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from src.database import Base
 
@@ -37,6 +37,9 @@ class MusicSuggestion(Base):
 
     royalty_free_alt=Column(String)
 
+    # Song suggestions are unverified style references (Phase D).
+    verified=Column(Boolean, nullable=True)
+    licensing_note=Column(Text, nullable=True)
     trending_instagram=Column(JSONB)
 
     trending_tiktok=Column(JSONB)

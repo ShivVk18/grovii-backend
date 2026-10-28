@@ -5,6 +5,8 @@ from sqlalchemy.orm import relationship
 from datetime import datetime
 
 
+from sqlalchemy.dialects.postgresql import JSONB
+
 from src.database import Base
 
 
@@ -50,6 +52,11 @@ class Storyboard(Base):
     # Plain-language explanation shown to the creator for partial/failed
     # storyboards (never internal error text).
     status_reason=Column(Text, nullable=True)
+
+    # Creator constraints (faceless/location/equipment) and, for open briefs,
+    # the concrete example the planner chose (Phase D).
+    constraints=Column(JSONB, nullable=True)
+    brief_choice=Column(Text, nullable=True)
 
 
 

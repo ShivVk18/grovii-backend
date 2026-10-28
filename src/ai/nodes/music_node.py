@@ -1,8 +1,12 @@
 import logging
-from src.ai.prompts.music_prompt import music_suggestion_prompt
-from src.services.openai_service import openai_service
+
 from langchain_core.output_parsers import JsonOutputParser
+
+from src.ai.inputs import common_inputs
+from src.ai.prompts.music_prompt import music_suggestion_prompt
+from src.ai.quality import label_music
 from src.Schemas.music import MusicSuggestionOutput
+from src.services.openai_service import openai_service
 
 logger = logging.getLogger(__name__)
 
@@ -38,19 +42,13 @@ def music_node(state):
             script_summary = get_state_val(state, "idea", "")
 
         response = chain.invoke({
-            "idea": get_state_val(state, "idea"),
-            "goal": get_state_val(state, "goal", "Inspire"),
-            "tone": get_state_val(state, "tone", "Energetic"),
-            "style": get_state_val(state, "style", "Fast-paced"),
-            "audience": get_state_val(state, "audience", "General"),
-            "language": get_state_val(state, "language", "English"),
-            "platform": get_state_val(state, "platform", "Reels"),
-            "duration": get_state_val(state, "duration", 30),
+            **common_inputs(state),
             "script_summary": script_summary,
             "format_instructions": parser.get_format_instructions()
         })
         
-        songs = response.get("songs", [])
+        # Suggestions come from the model's memory, not a music catalogue.
+        songs = label_music(response.get("songs", []))
         updates = {
             "scene_music": songs,
             "trending_instagram_audio": response.get("trending_instagram_audio", []),

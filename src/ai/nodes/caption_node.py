@@ -1,14 +1,10 @@
 import logging
 
-from tenacity import (
-    retry,
-    stop_after_attempt,
-    wait_exponential
-)
+from langchain_core.output_parsers import JsonOutputParser
 
+from src.ai.inputs import common_inputs
 from src.ai.prompts.caption_prompts import caption_prompt
 from src.services.openai_service import openai_service
-from langchain_core.output_parsers import JsonOutputParser
 
 logger = logging.getLogger(__name__)
 
@@ -27,14 +23,7 @@ def update_state(state, updates):
         return updates
 
 
-@retry(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(
-        multiplier=1,
-        min=1,
-        max=5
-    )
-)
+# No node-level retries: the LLM client and the job queue already retry.
 def generate_captions(payload):
     llm = openai_service.get_llm("caption")
     parser = JsonOutputParser()
@@ -45,13 +34,7 @@ def generate_captions(payload):
 def caption_node(state):
     updates = {}
     try:
-        captions = generate_captions(
-            {
-                "script": get_state_val(state, "script"),
-                "tone": get_state_val(state, "tone"),
-                "audience": get_state_val(state, "audience")
-            }
-        )
+        captions = generate_captions(common_inputs(state))
 
         cleaned = []
         seen = set()

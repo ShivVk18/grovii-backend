@@ -31,6 +31,15 @@ class GraphState(BaseModel):
     platform:str
     language:str="English"
 
+    # Creator constraints (Phase D, optional)
+    faceless:bool=False
+    location:Optional[str]=None
+    equipment:Optional[str]=None
+
+    # Phase D quality bookkeeping
+    brief_choice:Optional[str]=None
+    timeline_adjusted:bool=False
+
 
     #################################
     # Hook

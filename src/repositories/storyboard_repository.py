@@ -148,6 +148,7 @@ def save_graph_result(db: Session, storyboard_id: str, state: dict):
 
         storyboard.hook = state.get("hook")
         storyboard.script = state.get("script")
+        storyboard.brief_choice = state.get("brief_choice")
         # Status is set by job_lifecycle.transition() after this save.
 
         ################################################
@@ -195,6 +196,8 @@ def save_graph_result(db: Session, storyboard_id: str, state: dict):
                     scene_number=idx + 1,
                     title=scene.get("title"),
                     duration=scene.get("duration"),
+                    start_seconds=scene.get("start_seconds"),
+                    end_seconds=scene.get("end_seconds"),
                     what_to_show=w_show,
                     voiceover_example=v_example,
                     onscreen_text=on_screen,
@@ -276,6 +279,8 @@ def save_graph_result(db: Session, storyboard_id: str, state: dict):
                 mood=item.get("mood"),
                 platform_popularity=item.get("platform_popularity"),
                 royalty_free_alt=item.get("royalty_free_alt"),
+                verified=item.get("verified"),
+                licensing_note=item.get("licensing_note"),
                 trending_instagram=state.get("trending_instagram_audio", []),
                 trending_tiktok=state.get("trending_tiktok_audio", []),
                 trending_youtube=state.get("trending_youtube_shorts_audio", []),

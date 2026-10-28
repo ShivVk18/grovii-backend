@@ -19,8 +19,8 @@ from src.models.users import User
 from tests.conftest import VALID_STORYBOARD
 
 PROMPT_TOKENS, COMPLETION_TOKENS = 100, 50
-GRAPH_LLM_NODES = {"hook", "hook_regenerator", "director", "script", "caption",
-                   "hashtag", "music", "trend", "repurpose"}
+# Phase D: hook_regenerator removed; script is built in code (no LLM).
+GRAPH_LLM_NODES = {"hook", "director", "caption", "hashtag", "music", "trend", "repurpose"}
 
 
 @pytest.fixture
@@ -72,7 +72,7 @@ def test_get_llm_sets_timeout_retries_and_per_node_output_cap():
 def test_every_graph_node_has_an_output_cap():
     from src.ai.graph import graph
 
-    llm_nodes = set(graph.nodes) - {"__start__", "collector"}
+    llm_nodes = set(graph.nodes) - {"__start__", "collector", "script"}
     assert llm_nodes == GRAPH_LLM_NODES
     assert llm_nodes <= set(limits.NODE_MAX_OUTPUT_TOKENS)
 
@@ -133,19 +133,19 @@ def test_token_budget_stops_further_llm_calls(fake_llm):
     from src.services.llm_usage import metered
 
     per_call = PROMPT_TOKENS + COMPLETION_TOKENS
-    # hook (150) + hook_regenerator (300) + director (450): the 4th call sees
-    # 450 >= 320 and is refused before it is sent.
+    # hook (150 used) < 160, so director runs (300 used); the 5 fan-out calls
+    # all see 300 >= 160 and are refused before they are sent.
     from src.services.llm_usage import BudgetExceeded
 
-    with metered(budget=320) as meter:
+    with metered(budget=160) as meter:
         try:
             _run_graph()
         except BudgetExceeded:
             pass  # nodes without their own try/except (trend) let it propagate; either way calls stop
 
     assert meter.exceeded
-    assert meter.calls == 3
-    assert meter.total_tokens == 3 * per_call
+    assert meter.calls == 2
+    assert meter.total_tokens == 2 * per_call
 
 
 # --------------------------------------------------- recorded on the job row ----
@@ -178,7 +178,7 @@ def test_job_records_tokens_calls_and_cost(fake_llm, db, user):
 def test_budget_exceeded_fails_the_job_refunds_and_still_records_usage(fake_llm, db, user, monkeypatch):
     from src.services.jobs_services import generate_storyboard_job
 
-    monkeypatch.setattr(limits, "JOB_TOKEN_BUDGET", 320)
+    monkeypatch.setattr(limits, "JOB_TOKEN_BUDGET", 160)
     user.credits = 4
     db.commit()
     sb_id, job_id = _job(db, user)
@@ -190,7 +190,7 @@ def test_budget_exceeded_fails_the_job_refunds_and_still_records_usage(fake_llm,
     job = db.get(Job, job_id)
     assert job.status == JobStatus.FAILED
     assert "token budget" in job.error_message
-    assert job.llm_calls == 3 and job.prompt_tokens == 300
+    assert job.llm_calls == 2 and job.prompt_tokens == 200
     assert job.credits_refunded is True
     assert db.get(User, user.id).credits == 5
 

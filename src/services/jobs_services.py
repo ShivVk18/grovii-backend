@@ -10,6 +10,7 @@ from src.database import SessionLocal
 from src.models.jobs import Job, JobStatus
 from src.repositories.job_repository import get_job, update_progress
 from src.repositories.storyboard_repository import save_graph_result
+from src.ai.quality import language_problems
 from src.services.credits_service import is_user_fault
 from src.services.job_lifecycle import USER_MESSAGES, transition
 from src.services.llm_usage import BudgetExceeded, metered
@@ -18,7 +19,7 @@ from src.services.spend_service import record_job_usage
 logger = logging.getLogger("grovii.jobs_services")
 
 PROGRESS = {
-    "hook": 15, "hook_regenerator": 25, "director": 45, "script": 60, "caption": 70,
+    "hook": 15, "director": 45, "script": 60, "caption": 70,
     "hashtag": 75, "music": 80, "trend": 85, "repurpose": 90, "collector": 95,
 }
 # Outputs a creator can live without; missing ones are reported, not fatal.
@@ -36,6 +37,18 @@ def _retries_left() -> int:
     """Retries RQ still has for this job after the current attempt (0 outside RQ)."""
     rq_job = get_current_job()
     return int(getattr(rq_job, "retries_left", 0) or 0) if rq_job is not None else 0
+
+
+def _language_texts(state: dict) -> dict[str, str]:
+    scenes = state.get("scenes") or []
+    return {
+        "hook": state.get("hook") or "",
+        "script": state.get("script") or "",
+        "scene directions": " ".join(str(s.get("what_to_show") or "") for s in scenes),
+        "on-screen text": " ".join(str(s.get("onscreen_text") or "") for s in scenes),
+        "captions": " ".join(str(c.get("caption") if isinstance(c, dict) else c) for c in state.get("captions") or []),
+        "repurposed posts": str((state.get("repurposed_content") or {}).get("linkedin") or ""),
+    }
 
 
 def _missing_optional(state: dict) -> list[str]:
@@ -88,10 +101,18 @@ def generate_storyboard_job(payload, storyboard_id, job_id):
                        reason=USER_MESSAGES["script_missing"],
                        internal_error=f"script missing: {final_state.get('script_error')}", refund=True)
         else:
+            notes = []
             missing = _missing_optional(final_state)
-            reason = (f"Your storyboard is ready, but these extras couldn't be generated: {', '.join(missing)}."
-                      if missing else None)
-            transition(db, job_id, JobStatus.COMPLETED, storyboard_status="completed", reason=reason)
+            if missing:
+                notes.append(f"Your storyboard is ready, but these extras couldn't be generated: {', '.join(missing)}.")
+            # Final language check (QUAL-03): flag parts that don't look like the requested language.
+            language = final_state.get("language") or "English"
+            off = language_problems(language, _language_texts(final_state))
+            if off:
+                logger.warning("Job %s language check failed for %s: %s", job_id, language, off)
+                notes.append(f"Some parts may not be fully in {language}: {', '.join(off)}. Please review them.")
+            transition(db, job_id, JobStatus.COMPLETED, storyboard_status="completed",
+                       reason=" ".join(notes) or None)
         return final_state
 
     except BudgetExceeded as e:

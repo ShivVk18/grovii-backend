@@ -1,93 +1,18 @@
+"""Script node: no LLM. The full voiceover script is the scene voiceovers in
+order (Phase D design: scenes are the single source of truth for narration,
+so the script and the per-scene lines can never disagree)."""
 import logging
 
-from src.services.openai_service import openai_service
-from src.ai.prompts.script_prompt import script_prompt
+from src.ai.inputs import get
 
 logger = logging.getLogger(__name__)
 
 
-def get_state_val(state, key, default=""):
-    if isinstance(state, dict):
-        return state.get(key, default)
-    return getattr(state, key, default)
-
-
-def update_state(state, updates):
-    if isinstance(state, dict):
-        state.update(updates)
-        return state
-    else:
-        return updates
-
-
-def format_scenes(scenes):
-    formatted = []
-    for scene in scenes:
-        formatted.append(
-            f"""
-Scene {scene.get('scene_number', '')}
-
-Title:
-{scene.get('title', '')}
-
-Duration:
-{scene.get('duration', '')}
-
-Camera:
-{scene.get('camera_angle', '')}
-
-Movement:
-{scene.get('camera_movement', '')}
-
-Lighting:
-{scene.get('lighting', '')}
-
-Broll:
-{scene.get('broll', '')}
-
-Voiceover:
-{scene.get('script_segment', '')}
-"""
-        )
-    return "\n".join(formatted)
-
-
 def script_node(state):
-    logger.info("Stage: Script Generated - Processing Started")
-    updates = {}
-    try:
-        llm = openai_service.get_llm("script")
-        chain = script_prompt | llm
-
-        scenes = get_state_val(state, "scenes", [])
-        formatted_scenes = format_scenes(scenes)
-
-        response = chain.invoke(
-            {
-                "hook": get_state_val(state, "hook"),
-                "scenes": formatted_scenes,
-                "audience": get_state_val(state, "audience"),
-                "platform": get_state_val(state, "platform")
-            }
-        )
-
-        script = response.text.strip()  # .text: Gemini returns content as a list of parts
-
-        if len(script) < 100:
-            raise ValueError(
-                "Generated script too short"
-            )
-
-        updates["script"] = script
-        logger.info(
-            "Stage: Script Generated - Success. Script generated successfully"
-        )
-
-    except Exception as e:
-        logger.error(
-            f"Stage: Script Generated - Failed: {e}"
-        )
-        updates["script"] = ""
-        updates["script_error"] = str(e)
-
-    return update_state(state, updates)
+    scenes = get(state, "scenes", []) or []
+    lines = [str(s.get("voiceover_example") or "").strip() for s in scenes if isinstance(s, dict)]
+    lines = [line for line in lines if line]
+    if not lines:
+        return {"script": "", "script_error": "no scene voiceovers to build the script from"}
+    logger.info("Stage: Script - built from %d scene voiceovers", len(lines))
+    return {"script": "\n\n".join(lines)}

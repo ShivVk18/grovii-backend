@@ -2,7 +2,6 @@ import pytest
 from unittest.mock import patch, MagicMock
 from langchain_core.messages import AIMessage
 from src.ai.state import GraphState
-from src.ai.nodes.hook_regenerator_node import hook_regenerator_node
 from src.ai.nodes.trend_node import trend_node
 from src.ai.nodes.music_node import music_node
 from src.ai.nodes.repurpose_node import repurpose_node
@@ -30,14 +29,6 @@ def base_state():
     }
 
 @patch('langchain_google_genai.ChatGoogleGenerativeAI.invoke')
-def test_hook_regenerator_node(mock_invoke, base_state):
-    mock_invoke.return_value = AIMessage(content='{"regenerated_hooks": [{"hook": "New hook", "type": "Curiosity", "score": 90}]}')
-    
-    new_state = hook_regenerator_node(base_state)
-    assert len(new_state["regenerated_hooks"]) == 1
-    assert new_state["regenerated_hooks"][0]["hook"] == "New hook"
-
-@patch('langchain_google_genai.ChatGoogleGenerativeAI.invoke')
 def test_trend_node(mock_invoke, base_state):
     mock_invoke.return_value = AIMessage(content='{"hooks": ["Trend hook"], "sounds": ["Trend sound"], "transitions": ["Trend transition"], "best_duration": "15s", "posting_time": "10 AM", "editing_style": "Fast", "content_gaps": []}')
     
@@ -46,11 +37,16 @@ def test_trend_node(mock_invoke, base_state):
 
 @patch('langchain_google_genai.ChatGoogleGenerativeAI.invoke')
 def test_music_node(mock_invoke, base_state):
-    mock_invoke.return_value = AIMessage(content='{"scene_music": [{"scene": 1, "genre": "Pop", "bpm": 120, "mood": "Happy", "transition": "Fade"}]}')
-    
+    # Current music schema (song_name/artist/why_fits...); the old mock used a
+    # pre-August shape and failed since before Phase A (BACKLOG #1).
+    mock_invoke.return_value = AIMessage(content='{"songs": [{"song_name": "Sunflower", "artist": "Post Malone", '
+                                                 '"why_fits": "Warm, mid-tempo", "best_scene": "Scene 1-2", "mood": "Chill pop"}]}')
+
     new_state = music_node(base_state)
     assert len(new_state["scene_music"]) == 1
-    assert new_state["scene_music"][0]["genre"] == "Pop"
+    song = new_state["scene_music"][0]
+    assert song["song_name"] == "Sunflower"
+    assert song["verified"] is False and "licensing_note" in song
 
 @patch('langchain_google_genai.ChatGoogleGenerativeAI.invoke')
 def test_repurpose_node(mock_invoke, base_state):
