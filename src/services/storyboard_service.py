@@ -1,11 +1,14 @@
+import logging
 from datetime import datetime, timedelta, timezone
 
 from fastapi import HTTPException
+from rq import Retry
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from src.ai.graph import graph
 from src.api.errors import AppError
+from src.config import jobs as job_config
 from src.config import limits
 from src.models.jobs import Job, JobStatus
 from src.models.storyboard import Storyboard
@@ -29,9 +32,12 @@ from src.Schemas.storyboard_schema import (
     CreateStoryboardRequest,
     UpdateStoryboardRequest,
 )
+from src.services.job_lifecycle import USER_MESSAGES, transition
 from src.services.jobs_services import generate_storyboard_job
 from src.services.queue_service import storyboard_queue
 from src.services.spend_service import ensure_daily_budget_available
+
+logger = logging.getLogger("grovii.storyboards")
 
 
 async  def generate_storyboard(payload):
@@ -77,7 +83,7 @@ def reserve_generation(db: Session, payload, user_id: str):
             db.query(func.count(Job.id))
             .filter(
                 Job.user_id == user_id,
-                Job.status.in_([JobStatus.PENDING, JobStatus.PROCESSING]),
+                Job.status.in_([JobStatus.QUEUED, JobStatus.RUNNING]),
                 Job.created_at >= active_since,
             )
             .scalar()
@@ -113,7 +119,7 @@ def reserve_generation(db: Session, payload, user_id: str):
             duration=payload.duration,
             platform=payload.platform,
             language=payload.language,
-            status="pending",
+            status="queued",
         )
         db.add(storyboard)
         db.flush()
@@ -128,32 +134,16 @@ def reserve_generation(db: Session, payload, user_id: str):
     return storyboard, job
 
 
-async def create_ai_storyboard(
-        db,
-        payload,
-        user_id,
-        background_tasks=None
-):
-    storyboard, job = reserve_generation(db, payload, user_id)
-
-
-    raw_duration = getattr(payload, "duration", 30)
-    if isinstance(raw_duration, str):
-        import re
-        digits = re.findall(r"\d+", raw_duration)
-        parsed_duration = int(digits[0]) if digits else 30
-    else:
-        parsed_duration = int(raw_duration or 30)
-
-    state = {
+def _job_state(payload) -> dict:
+    return {
         "idea": payload.idea,
         "goal": payload.goal,
         "tone": payload.tone,
         "style": payload.style,
         "audience": payload.audience,
-        "duration": parsed_duration,
+        "duration": payload.duration,
         "platform": payload.platform,
-        "language": getattr(payload, "language", "English") or "English",
+        "language": payload.language,
         "hook": "",
         "scenes": [],
         "script": "",
@@ -163,59 +153,83 @@ async def create_ai_storyboard(
         "trends": {},
         "scene_music": [],
         "repurposed_content": {},
-        "thumbnail_url": ""
+        "thumbnail_url": "",
     }
 
-    use_redis = False
+
+def _warn_if_no_worker() -> None:
+    """Log (not fail) when no worker listens on the queue: the job stays queued
+    and the reaper fails it after QUEUED_TIMEOUT_MINUTES if nobody picks it up."""
     try:
         from rq import Worker
 
-        from src.services.redis_service import redis_client
-        if redis_client.ping():
-            workers = Worker.all(connection=redis_client)
-            active_workers = [
-                w for w in workers
-                if "storyboard_queue" in [q.name for q in w.queues]
-                and w.get_state() != "dead"
-            ]
-            if active_workers:
-                rq_job = storyboard_queue.enqueue(
-                    generate_storyboard_job,
-                    state,
-                    storyboard.id,
-                    job.id
-                )
-                update_queue_job_id(
-                    db,
-                    job,
-                    rq_job.id
-                )
-                use_redis = True
-    except Exception:
-        use_redis = False
+        listening = [
+            w for w in Worker.all(connection=storyboard_queue.connection)
+            if storyboard_queue.name in w.queue_names() and w.get_state() != "dead"
+        ]
+        if not listening:
+            logger.warning("No worker is listening on queue %r; job will wait", storyboard_queue.name)
+    except Exception as e:  # noqa: BLE001 - diagnostics only
+        logger.warning("Could not check workers: %s", e)
 
-    if not use_redis:
-        if background_tasks is not None:
-            background_tasks.add_task(
-                generate_storyboard_job,
-                state,
-                storyboard.id,
-                job.id
+
+def create_ai_storyboard(db, payload, user_id, background_tasks=None):
+    """Charge, create, then hand the job to the worker queue.
+
+    Jobs always go to Redis. Running them inside the API process is allowed
+    only when ALLOW_INPROCESS_JOBS is set (local development).
+    """
+    storyboard, job = reserve_generation(db, payload, user_id)
+    state = _job_state(payload)
+
+    if job_config.ALLOW_INPROCESS_JOBS:
+        logger.warning("ALLOW_INPROCESS_JOBS is on: running job %s in the API process", job.id)
+        if background_tasks is None:
+            raise RuntimeError("in-process mode needs FastAPI BackgroundTasks")
+        background_tasks.add_task(generate_storyboard_job, state, storyboard.id, job.id)
+    else:
+        try:
+            rq_job = storyboard_queue.enqueue(
+                generate_storyboard_job, state, storyboard.id, job.id,
+                job_id=job.id,  # same id in Redis and Postgres: easy to trace, no duplicates
+                job_timeout=job_config.JOB_TIMEOUT_SECONDS,
+                retry=Retry(max=job_config.JOB_MAX_RETRIES, interval=job_config.JOB_RETRY_INTERVALS),
+                failure_ttl=7 * 24 * 3600,
             )
-        else:
-            import asyncio
-            asyncio.create_task(asyncio.to_thread(
-                generate_storyboard_job,
-                state,
-                storyboard.id,
-                job.id
-            )) 
+        except Exception as e:  # noqa: BLE001 - Redis down or misconfigured
+            logger.error("Could not enqueue job %s: %s", job.id, e)
+            transition(db, job.id, JobStatus.FAILED, reason=USER_MESSAGES["queue_unavailable"],
+                       internal_error=f"enqueue failed: {type(e).__name__}: {e}", refund=True)
+            raise AppError(503, "queue_unavailable", USER_MESSAGES["queue_unavailable"],
+                           headers={"Retry-After": "60"}) from None
+        update_queue_job_id(db, job, getattr(rq_job, "id", job.id))
+        _warn_if_no_worker()
 
     return {
         "job_id": job.id,
         "storyboard_id": storyboard.id,
-        "status": "pending"
+        "status": JobStatus.QUEUED.value,
     }
+
+
+def cancel_job(db: Session, job_id: str, user_id: str) -> dict:
+    """Cancel a job that has not started yet, and refund it."""
+    job = db.query(Job).filter(Job.id == job_id, Job.user_id == user_id).with_for_update().first()
+    if job is None:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.status != JobStatus.QUEUED:
+        db.rollback()
+        raise AppError(409, "not_cancellable",
+                       "This generation has already started or finished, so it can't be cancelled.")
+    try:
+        from rq.job import Job as RQJob
+
+        RQJob.fetch(job.queue_job_id or job.id, connection=storyboard_queue.connection).cancel()
+    except Exception as e:  # noqa: BLE001 - the DB status below still stops the worker
+        logger.warning("Could not cancel RQ job %s: %s", job_id, e)
+    transition(db, job_id, JobStatus.CANCELLED, reason=USER_MESSAGES["cancelled"], refund=True)
+    return {"job_id": job_id, "status": JobStatus.CANCELLED.value}
+
 
 def create_storyboard(
         db: Session,

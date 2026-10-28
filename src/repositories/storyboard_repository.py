@@ -145,7 +145,7 @@ def save_graph_result(db: Session, storyboard_id: str, state: dict):
 
         storyboard.hook = state.get("hook")
         storyboard.script = state.get("script")
-        storyboard.status = "completed"
+        # Status is set by job_lifecycle.transition() after this save.
 
         ################################################
         # Clean existing relations for idempotency

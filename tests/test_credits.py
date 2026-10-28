@@ -5,8 +5,6 @@ import time
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
-import pytest
-
 from src.models.jobs import Job, JobStatus
 from src.models.storyboard import Storyboard
 from src.models.users import User
@@ -58,7 +56,8 @@ def test_successful_dispatch_charges_one_credit_and_records_it_on_the_job(client
     assert _credits(db, uid) == 2
     job = db.get(Job, r.json()["job_id"])
     assert job.credits_charged == 1 and job.credits_refunded is False
-    assert dispatched.called
+    from src.services import storyboard_service
+    assert storyboard_service.storyboard_queue.enqueue.called  # handed to the worker queue
 
 
 def test_two_simultaneous_requests_with_one_credit_only_one_succeeds(db, user):
@@ -109,7 +108,7 @@ def test_two_simultaneous_requests_with_one_credit_only_one_succeeds(db, user):
 
 
 # ------------------------------------------------------- concurrency cap ----
-def _active_job(db, user_id, minutes_ago=0, status=JobStatus.PENDING):
+def _active_job(db, user_id, minutes_ago=0, status=JobStatus.QUEUED):
     sb = Storyboard(user_id=user_id, idea="x" * 10, goal="educate", tone="calm", style="pov",
                     audience="ab", duration=30, platform="reels", status="pending")
     db.add(sb)
@@ -124,8 +123,8 @@ def _active_job(db, user_id, minutes_ago=0, status=JobStatus.PENDING):
 def test_third_active_job_is_refused_with_429_and_no_charge(client, auth_headers, db):
     uid = _user_id_from(client, auth_headers)
     _set_credits(db, uid, 10)
-    _active_job(db, uid, status=JobStatus.PENDING)
-    _active_job(db, uid, status=JobStatus.PROCESSING)
+    _active_job(db, uid, status=JobStatus.QUEUED)
+    _active_job(db, uid, status=JobStatus.RUNNING)
 
     r = _generate(client, auth_headers)
 
@@ -140,8 +139,8 @@ def test_finished_and_stale_jobs_do_not_count_toward_the_cap(client, auth_header
     _set_credits(db, uid, 10)
     _active_job(db, uid, status=JobStatus.COMPLETED)
     _active_job(db, uid, status=JobStatus.FAILED)
-    _active_job(db, uid, minutes_ago=120, status=JobStatus.PROCESSING)  # stuck: Phase C reaper's job
-    _active_job(db, uid, status=JobStatus.PENDING)
+    _active_job(db, uid, minutes_ago=120, status=JobStatus.RUNNING)  # stuck: Phase C reaper's job
+    _active_job(db, uid, status=JobStatus.QUEUED)
 
     assert _generate(client, auth_headers).status_code == 200
 
@@ -161,8 +160,10 @@ def _run_job_that_raises(sb_id, job_id, exc):
 
     state = {**VALID_STORYBOARD, "hook": "", "scenes": [], "script": ""}
     with patch.object(graph_module.graph, "stream", side_effect=exc):
-        with pytest.raises(type(exc)):
+        try:
             generate_storyboard_job(state, sb_id, job_id)
+        except type(exc):
+            pass  # last-attempt system errors re-raise; user-fault errors are handled
 
 
 def test_system_failure_refunds_the_credit(client, auth_headers, db):

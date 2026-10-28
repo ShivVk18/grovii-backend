@@ -1,6 +1,6 @@
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from src.config.dependencies_config import get_current_user
 from src.database import get_db
@@ -12,6 +12,7 @@ from src.Schemas.storyboard_schema import (
     UpdateStoryboardRequest,
 )
 from src.services import storyboard_service
+from src.services.job_lifecycle import user_message_for
 from src.services.rate_limit import limit_create, limit_generate
 
 router = APIRouter(
@@ -92,10 +93,20 @@ def get_job_status(
         "status": job.status,
         "storyboard_id": job.storyboard_id,
         "progress": job.progress,
-        "error_message": job.error_message,
+        # User-safe text only; the internal error stays in the database.
+        "error_message": user_message_for(job, job.storyboard),
         "created_at": job.created_at.isoformat() if job.created_at else None,
         "completed_at": job.completed_at.isoformat() if job.completed_at else None
     }
+
+
+@router.post("/jobs/{job_id}/cancel")
+def cancel_job(
+    job_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    return storyboard_service.cancel_job(db=db, job_id=job_id, user_id=current_user.id)
 
 
 @router.get(
@@ -106,7 +117,13 @@ def get_jobs_list(
     current_user: User = Depends(get_current_user)
 ):
     from src.models.jobs import Job
-    jobs = db.query(Job).filter(Job.user_id == current_user.id).order_by(Job.created_at.desc()).all()
+    jobs = (
+        db.query(Job)
+        .options(joinedload(Job.storyboard))  # one query instead of one per job
+        .filter(Job.user_id == current_user.id)
+        .order_by(Job.created_at.desc())
+        .all()
+    )
     results = []
     for job in jobs:
         storyboard_title = "Unknown Storyboard"
@@ -119,7 +136,7 @@ def get_jobs_list(
             "storyboard_id": job.storyboard_id,
             "storyboard_title": storyboard_title,
             "progress": job.progress,
-            "error_message": job.error_message,
+            "error_message": user_message_for(job, job.storyboard),
             "created_at": job.created_at.isoformat() if job.created_at else None,
             "completed_at": job.completed_at.isoformat() if job.completed_at else None,
             "started_at": job.started_at.isoformat() if job.started_at else None
@@ -197,13 +214,15 @@ def delete_storyboard(
     "/generate",
     dependencies=[Depends(limit_generate)],
 )
-async def generate_ai_storyboard(
+def generate_ai_storyboard(
     payload: CreateStoryboardRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    storyboard = await storyboard_service.create_ai_storyboard(
+    # Plain `def` (not async): FastAPI runs it in a thread pool, so the locked
+    # DB transaction in reserve_generation() never blocks the event loop.
+    storyboard = storyboard_service.create_ai_storyboard(
         db=db,
         payload=payload,
         user_id=current_user.id,

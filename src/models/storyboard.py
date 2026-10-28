@@ -40,10 +40,16 @@ class Storyboard(Base):
 
     language=Column(String, default="English")
 
+    # draft/created (no generation), queued, running, completed, partial,
+    # failed, cancelled. Generation statuses mirror the job (see job_lifecycle).
     status=Column(
         String,
         default="draft"
     )
+
+    # Plain-language explanation shown to the creator for partial/failed
+    # storyboards (never internal error text).
+    status_reason=Column(Text, nullable=True)
 
 
 

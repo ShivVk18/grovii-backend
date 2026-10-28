@@ -20,10 +20,13 @@ from src.database import Base
 
 
 class JobStatus(str, enum.Enum):
-    PENDING = "pending"
-    PROCESSING = "processing"
+    """Job lifecycle. queued -> running -> completed | failed; queued -> cancelled.
+    A failed attempt with retries left goes back to queued."""
+    QUEUED = "queued"
+    RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
+    CANCELLED = "cancelled"
 
 
 class Job(Base):
@@ -38,7 +41,7 @@ class Job(Base):
     status = Column(
         Enum(JobStatus),
         nullable=False,
-        default=JobStatus.PENDING
+        default=JobStatus.QUEUED
     )
 
     user_id = Column(

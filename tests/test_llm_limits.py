@@ -183,8 +183,8 @@ def test_budget_exceeded_fails_the_job_refunds_and_still_records_usage(fake_llm,
     db.commit()
     sb_id, job_id = _job(db, user)
 
-    with pytest.raises(Exception, match="token budget"):
-        generate_storyboard_job(_state(), sb_id, job_id)
+    # Handled without raising: a retry would hit the same budget, so RQ must not retry.
+    assert generate_storyboard_job(_state(), sb_id, job_id) is None
 
     db.expire_all()
     job = db.get(Job, job_id)
@@ -223,8 +223,8 @@ def test_daily_ceiling_refuses_new_jobs_with_503_and_alerts(client, auth_headers
 
 def test_in_flight_jobs_are_reserved_against_the_ceiling(client, auth_headers, db, user, monkeypatch):
     monkeypatch.setattr(limits, "DAILY_SPEND_LIMIT_USD", limits.JOB_COST_RESERVE_USD * 2.5)
-    _spent_today(db, user, None, status=JobStatus.PROCESSING)
-    _spent_today(db, user, None, status=JobStatus.PENDING)
+    _spent_today(db, user, None, status=JobStatus.RUNNING)
+    _spent_today(db, user, None, status=JobStatus.QUEUED)
     # 2 reserved + this one = 3 x reserve > 2.5 x reserve
     r = client.post("/storyboards/generate", json=VALID_STORYBOARD, headers=auth_headers)
     assert r.status_code == 503

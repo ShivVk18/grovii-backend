@@ -7,7 +7,6 @@ reports XPASS as an error, which tells the fixing phase to remove the marker.
 Frontend bugs (FE-01 hardcoded repurpose, FE-03 music `reason`) are covered in
 frontend/tests/regressions.test.mjs.
 """
-import asyncio
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -37,7 +36,7 @@ def _state():
 
 
 # ---------------------------------------------------------------- OPS-01 ----
-@pytest.mark.xfail(reason="OPS-01 queue-name mismatch: fixed in Phase C", strict=True)
+# OPS-01 fixed in Phase C.
 def test_ops01_job_goes_to_redis_when_a_worker_listens_on_the_real_queue(db, user):
     """A live worker on the `storyboards` queue exists, so the job must be enqueued
     to Redis, not run in-process via BackgroundTasks."""
@@ -53,9 +52,9 @@ def test_ops01_job_goes_to_redis_when_a_worker_listens_on_the_real_queue(db, use
     with patch.object(redis_client, "ping", return_value=True), \
          patch("rq.Worker.all", return_value=[worker]), \
          patch.object(storyboard_service.storyboard_queue, "enqueue", return_value=MagicMock(id="rq-1")) as enqueue:
-        asyncio.run(storyboard_service.create_ai_storyboard(
+        storyboard_service.create_ai_storyboard(
             db=db, payload=CreateStoryboardRequest(**VALID_STORYBOARD),
-            user_id=user.id, background_tasks=background_tasks))
+            user_id=user.id, background_tasks=background_tasks)
 
     assert enqueue.called, "job was not enqueued to Redis"
     assert not background_tasks.add_task.called, "job silently fell back to in-process execution"
@@ -69,7 +68,7 @@ def test_api01_jobs_list_route_is_reachable(client, auth_headers):
 
 
 # ---------------------------------------------------------------- RES-01 ----
-@pytest.mark.xfail(reason="RES-01 failed job leaves storyboard 'pending': fixed in Phase C", strict=True)
+# RES-01 fixed in Phase C.
 def test_res01_failed_job_marks_storyboard_failed(db, user):
     from src.ai import graph as graph_module
     from src.services.jobs_services import generate_storyboard_job
@@ -96,7 +95,7 @@ def test_res02_precondition_scene_node_swallows_errors_into_empty_list():
     assert "timeout" in out["scene_error"]
 
 
-@pytest.mark.xfail(reason="RES-02 empty scenes saved as 'completed': fixed in Phase C", strict=True)
+# RES-02 fixed in Phase C.
 def test_res02_empty_scenes_never_saved_as_completed(db, user):
     from src.ai import graph as graph_module
     from src.services.jobs_services import generate_storyboard_job

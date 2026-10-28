@@ -106,7 +106,7 @@ def mark_processing(
     try:
 
 
-        job.status = JobStatus.PROCESSING
+        job.status = JobStatus.RUNNING
 
 
         job.started_at = datetime.now(timezone.utc)

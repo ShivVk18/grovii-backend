@@ -47,7 +47,7 @@ def committed_spend_today(db: Session) -> float:
         .filter(
             Job.created_at >= since,
             Job.cost_usd.is_(None),
-            Job.status.in_([JobStatus.PENDING, JobStatus.PROCESSING]),
+            Job.status.in_([JobStatus.QUEUED, JobStatus.RUNNING]),
         )
         .scalar()
     )
