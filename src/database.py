@@ -44,7 +44,12 @@ SessionLocal = sessionmaker(
 Base = declarative_base()
 
 
-def get_db():
+async def get_db():
+    # Async on purpose: FastAPI then runs this setup/cleanup on the event loop
+    # instead of taking a thread-pool slot, so closing a session (which returns
+    # its connection) never waits for a free thread. Route handlers stay sync
+    # and run in the thread pool; the session is used by one request at a time.
+    # See also get_current_user, which ends its transaction for the same reason.
     db = SessionLocal()
     try:
         yield db

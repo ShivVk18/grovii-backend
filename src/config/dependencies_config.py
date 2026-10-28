@@ -38,6 +38,17 @@ def get_current_user(
         .first()
     )
 
+    # Give the connection back to the pool now. FastAPI runs this dependency
+    # and the route handler as two separate thread-pool steps; holding the
+    # connection in between let all threads wait for connections while all
+    # connections waited for threads (HTTP 500 after DB_POOL_TIMEOUT under
+    # load). The user is detached with its columns loaded; handlers use its
+    # plain attributes (id, email, ...), and queries they run re-open a
+    # connection inside their own thread step.
+    if user is not None:
+        db.expunge(user)
+    db.rollback()
+
     if not user:
         raise HTTPException(
             status_code=401,
