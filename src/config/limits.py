@@ -56,6 +56,8 @@ LLM_THINKING_BUDGET = _int("LLM_THINKING_BUDGET", 0)
 # Optional: route LLM calls through a proxy or compatible endpoint.
 LLM_BASE_URL = os.getenv("LLM_BASE_URL") or None
 LLM_TIMEOUT_SECONDS = _float("LLM_TIMEOUT_SECONDS", 60.0)
+# Optional pacing of LLM calls per process (0 = off). Gemini free tier: 5/min.
+LLM_REQUESTS_PER_MINUTE = _float("LLM_REQUESTS_PER_MINUTE", 0)
 LLM_MAX_RETRIES = _int("LLM_MAX_RETRIES", 2)
 
 # Max output tokens per graph node. Measured output (max of 30 eval runs):

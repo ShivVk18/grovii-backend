@@ -14,6 +14,7 @@ Limit: the budget is checked BEFORE each call. Calls already in flight finish,
 so a job can overshoot by at most the output caps of its in-flight calls.
 """
 import threading
+import time
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
@@ -62,6 +63,32 @@ class UsageMeter:
             self.by_node[node] = self.by_node.get(node, 0) + prompt + completion
 
 
+class _Throttle:
+    """Process-wide limit on LLM requests per minute (LLM_REQUESTS_PER_MINUTE).
+
+    Spaces calls evenly: each call waits until 60/rpm seconds after the
+    previous one. 0 disables it. Needed on Gemini's free tier (5 requests per
+    minute); a multi-process deployment needs a shared (Redis) limiter instead.
+    """
+
+    def __init__(self):
+        self._lock = threading.Lock()
+        self._next_at = 0.0
+
+    def wait(self) -> None:
+        rpm = limits.LLM_REQUESTS_PER_MINUTE
+        if rpm <= 0:
+            return
+        with self._lock:
+            now = time.monotonic()
+            start = max(now, self._next_at)
+            self._next_at = start + 60.0 / rpm
+        if start > now:
+            time.sleep(start - now)
+
+
+throttle = _Throttle()
+
 _current: ContextVar[UsageMeter | None] = ContextVar("grovii_usage_meter", default=None)
 
 
@@ -102,6 +129,7 @@ class UsageCallback(BaseCallbackHandler):
         meter = _current.get()
         if meter is not None:
             meter.check()
+        throttle.wait()
 
     def on_chat_model_start(self, *args: Any, **kwargs: Any) -> None:
         self._before_call()

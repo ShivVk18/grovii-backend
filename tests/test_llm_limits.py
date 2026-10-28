@@ -261,3 +261,24 @@ def test_usage_accumulates_across_retry_attempts(db, user):
     assert job.prompt_tokens == 3 * PROMPT_TOKENS
     assert job.completion_tokens == 3 * COMPLETION_TOKENS
     assert float(job.cost_usd) == pytest.approx(limits.estimate_cost_usd(3 * PROMPT_TOKENS, 3 * COMPLETION_TOKENS), abs=1e-6)
+
+
+def test_throttle_spaces_llm_calls(monkeypatch):
+    from src.services.llm_usage import _Throttle
+
+    monkeypatch.setattr(limits, "LLM_REQUESTS_PER_MINUTE", 600)  # one call per 0.1s
+    t = _Throttle()
+    start = time.monotonic()
+    for _ in range(4):
+        t.wait()
+    assert 0.25 <= time.monotonic() - start < 1.0
+
+
+def test_throttle_off_by_default():
+    from src.services.llm_usage import _Throttle
+
+    assert limits.LLM_REQUESTS_PER_MINUTE == 0
+    start = time.monotonic()
+    for _ in range(50):
+        _Throttle().wait()
+    assert time.monotonic() - start < 0.1
