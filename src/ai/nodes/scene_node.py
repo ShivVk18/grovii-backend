@@ -53,7 +53,8 @@ def _normalize(data: dict) -> list[dict]:
             continue
         voiceover = str(sc.get("voiceover") or sc.get("voiceover_example") or "").strip()
         what = _compose_what_to_show(sc)
-        advanced = sc.get("advanced") if isinstance(sc.get("advanced"), dict) else {}
+        raw_advanced = sc.get("advanced")
+        advanced: dict = raw_advanced if isinstance(raw_advanced, dict) else {}
         scenes.append({
             "title": str(sc.get("title") or "").strip(),
             "duration_seconds": seconds_of(sc.get("duration_seconds", sc.get("duration"))),
